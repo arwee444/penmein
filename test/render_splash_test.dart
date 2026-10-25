@@ -1,4 +1,4 @@
-import 'dart:io';
+﻿import 'dart:io';
 import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
@@ -19,7 +19,7 @@ void main() {
       ),
     );
     await t.runAsync(() async {
-      await precacheImage(const AssetImage('assets/arwee_logo.webp'), key.currentContext!);
+      await precacheImage(const AssetImage('assets/arwee_robot.png'), key.currentContext!);
     });
     await t.pump(const Duration(milliseconds: 900));
     await t.runAsync(() async {
