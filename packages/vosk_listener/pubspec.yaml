@@ -1,0 +1,19 @@
+﻿name: vosk_listener
+description: Minimal offline speech listener for Pen Me In (Vosk on Android).
+version: 0.1.0
+publish_to: 'none'
+
+environment:
+  sdk: ^3.13.5
+  flutter: '>=3.3.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+flutter:
+  plugin:
+    platforms:
+      android:
+        package: com.arwee.vosk_listener
+        pluginClass: VoskListenerPlugin
