@@ -7,6 +7,7 @@ import 'services/listen_service.dart';
 import 'theme.dart';
 import 'ui/home_screen.dart';
 import 'ui/onboarding_screen.dart';
+import 'ui/splash_screen.dart';
 
 late final NotesStore notes;
 late final NoteInbox inbox;
@@ -64,7 +65,7 @@ class _PenMeInAppState extends State<PenMeInApp> with WidgetsBindingObserver {
       title: 'Pen Me In',
       debugShowCheckedModeBanner: false,
       theme: buildTheme(),
-      home: widget.onboarded ? const HomeScreen() : const OnboardingScreen(),
+      home: SplashScreen(next: widget.onboarded ? const HomeScreen() : const OnboardingScreen()),
     ),
   );
 }
