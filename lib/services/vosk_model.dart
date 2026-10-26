@@ -7,45 +7,126 @@ import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 import 'package:vosk_listener/vosk_listener.dart';
 
-enum VoskModelState { unknown, missing, downloading, unpacking, ready, failed }
+/// An offline Vosk speech model the user can install from alphacephei.com.
+class SpeechModel {
+  const SpeechModel(this.id, this.dir, this.label, this.detail, this.sizeMb, {this.english = true});
 
-/// The offline English speech model (~40 MB), downloaded once on demand.
-class VoskModelManager extends ChangeNotifier {
-  VoskModelManager._();
-  static final instance = VoskModelManager._();
+  final String id;
 
-  static const name = 'vosk-model-small-en-us-0.15';
-  static const url = 'https://alphacephei.com/vosk/models/$name.zip';
+  /// Folder name inside the zip (and the zip's base name).
+  final String dir;
+  final String label;
+  final String detail;
+  final int sizeMb;
 
-  VoskModelState state = VoskModelState.unknown;
-  double progress = 0;
-  String? error;
+  /// English models can also listen for the wake phrase.
+  final bool english;
+
+  String get url => 'https://alphacephei.com/vosk/models/$dir.zip';
+}
+
+const speechModels = [
+  SpeechModel('en-us', 'vosk-model-small-en-us-0.15', 'English · standard', 'Small and quick. Trained mostly on US speech.', 40),
+  SpeechModel(
+    'en-us-accurate',
+    'vosk-model-en-us-0.22-lgraph',
+    'English · accurate',
+    'Noticeably better at words and sentences, including UK, Australian and Indian accents. Loads a little slower.',
+    128,
+  ),
+  SpeechModel('en-in', 'vosk-model-small-en-in-0.4', 'English (India)', 'Trained on Indian English.', 36),
+  SpeechModel(
+    'hi',
+    'vosk-model-small-hi-0.22',
+    'Hindi · हिन्दी',
+    'Notes are written in Devanagari. The wake phrase still uses an English model. '
+        '"done" won\'t be understood, so pause to finish (or add a Hindi stop word).',
+    42,
+    english: false,
+  ),
+];
+
+SpeechModel? modelById(String id) {
+  for (final m in speechModels) {
+    if (m.id == id) return m;
+  }
+  return null;
+}
+
+enum ModelState { missing, downloading, unpacking, ready, failed }
+
+/// Installs and removes speech models, one download at a time.
+class SpeechModels extends ChangeNotifier {
+  SpeechModels._();
+  static final instance = SpeechModels._();
+
+  final _state = <String, ModelState>{};
+  final _progress = <String, double>{};
+  final _error = <String, String>{};
+
+  ModelState state(SpeechModel m) => _state[m.id] ?? ModelState.missing;
+  double progress(SpeechModel m) => _progress[m.id] ?? 0;
+  String? error(SpeechModel m) => _error[m.id];
+  bool get busy => _state.values.any((s) => s == ModelState.downloading || s == ModelState.unpacking);
 
   static Future<Directory> _root() async => Directory(p.join((await getApplicationSupportDirectory()).path, 'vosk'));
 
-  /// Folder of the unpacked model.
-  static Future<String> modelPath() async => p.join((await _root()).path, name);
+  static Future<String> pathOf(SpeechModel m) async => p.join((await _root()).path, m.dir);
 
-  static Future<bool> isInstalled() async => isInstalledAt(await modelPath());
-
-  static Future<bool> isInstalledAt(String path) async => File(p.join(path, 'am', 'final.mdl')).existsSync();
-
-  Future<void> check() async {
-    if (state == VoskModelState.downloading || state == VoskModelState.unpacking) return;
-    _set(await isInstalled() ? VoskModelState.ready : VoskModelState.missing);
+  static Future<bool> isInstalled(SpeechModel m) async {
+    final d = await pathOf(m);
+    return File(p.join(d, '.installed')).existsSync() || File(p.join(d, 'am', 'final.mdl')).existsSync();
   }
 
-  Future<void> download() async {
-    if (state == VoskModelState.downloading || state == VoskModelState.unpacking) return;
-    error = null;
-    progress = 0;
-    _set(VoskModelState.downloading);
+  /// The model that writes notes: the chosen one if installed, otherwise the
+  /// first installed model.
+  static Future<SpeechModel?> noteModel(String chosenId) async {
+    final chosen = modelById(chosenId);
+    if (chosen != null && await isInstalled(chosen)) return chosen;
+    for (final m in speechModels) {
+      if (await isInstalled(m)) return m;
+    }
+    return null;
+  }
+
+  /// The model that listens for the wake phrase: the note model if it is
+  /// English (one model = less memory), otherwise any installed English one.
+  static Future<SpeechModel?> wakeModel(String chosenId) async {
+    final note = await noteModel(chosenId);
+    if (note != null && note.english) return note;
+    for (final m in speechModels.where((m) => m.english)) {
+      if (await isInstalled(m)) return m;
+    }
+    return null;
+  }
+
+  Future<void> check() async {
+    for (final m in speechModels) {
+      final s = state(m);
+      if (s == ModelState.downloading || s == ModelState.unpacking) continue;
+      _state[m.id] = await isInstalled(m) ? ModelState.ready : ModelState.missing;
+    }
+    notifyListeners();
+  }
+
+  Future<void> delete(SpeechModel m) async {
+    if (busy) return;
+    final d = Directory(await pathOf(m));
+    if (d.existsSync()) await d.delete(recursive: true);
+    _set(m, ModelState.missing);
+  }
+
+  Future<void> download(SpeechModel m) async {
+    if (busy) return;
+    _error.remove(m.id);
+    _progress[m.id] = 0;
+    _set(m, ModelState.downloading);
     final client = http.Client();
     try {
       final root = await _root();
       await root.create(recursive: true);
-      final zip = File(p.join(root.path, '$name.zip'));
-      final res = await client.send(http.Request('GET', Uri.parse(url))).timeout(const Duration(seconds: 30));
+      final zip = File(p.join(root.path, '${m.dir}.zip'));
+      final res = await client.send(http.Request('GET', Uri.parse(m.url))).timeout(const Duration(seconds: 30));
       if (res.statusCode != 200) throw HttpException('HTTP ${res.statusCode}');
       final total = res.contentLength ?? 0;
       var got = 0;
@@ -56,8 +137,8 @@ class VoskModelManager extends ChangeNotifier {
           got += chunk.length;
           if (total > 0) {
             final next = got / total;
-            if (next - progress >= 0.01 || next == 1) {
-              progress = next;
+            if (next - progress(m) >= 0.01 || next == 1) {
+              _progress[m.id] = next;
               notifyListeners();
             }
           }
@@ -66,24 +147,25 @@ class VoskModelManager extends ChangeNotifier {
         await sink.close();
       }
       if (total > 0 && got != total) throw const HttpException('Download was cut off');
-      _set(VoskModelState.unpacking);
-      final dest = Directory(await modelPath());
+      _set(m, ModelState.unpacking);
+      final dest = Directory(await pathOf(m));
       if (dest.existsSync()) await dest.delete(recursive: true);
       await VoskListener.unzip(zip.path, root.path);
       await zip.delete();
-      if (!await isInstalled()) throw const FileSystemException('Model files missing after unpacking');
-      _set(VoskModelState.ready);
+      if (!dest.existsSync()) throw const FileSystemException('Model folder missing after unpacking');
+      await File(p.join(dest.path, '.installed')).writeAsString('ok');
+      _set(m, ModelState.ready);
     } catch (e) {
-      error = e is TimeoutException ? 'The connection timed out.' : 'Download failed (${e.runtimeType}).';
-      debugPrint('Vosk model download failed: $e');
-      _set(VoskModelState.failed);
+      _error[m.id] = e is TimeoutException ? 'The connection timed out.' : 'Download failed (${e.runtimeType}).';
+      debugPrint('Speech model download failed: $e');
+      _set(m, ModelState.failed);
     } finally {
       client.close();
     }
   }
 
-  void _set(VoskModelState s) {
-    state = s;
+  void _set(SpeechModel m, ModelState s) {
+    _state[m.id] = s;
     notifyListeners();
   }
 }

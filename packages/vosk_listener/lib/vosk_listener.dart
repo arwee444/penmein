@@ -51,4 +51,7 @@ class VoskListener {
   static Future<void> unzip(String zip, String dest) => _m.invokeMethod('unzip', {'zip': zip, 'dest': dest});
 
   static Future<void> vibrate() => _m.invokeMethod('vibrate');
+
+  /// [kind]: 'start', 'end' or 'fail'. Distinct short tones.
+  static Future<void> beep(String kind) => _m.invokeMethod('beep', {'kind': kind});
 }

@@ -4,6 +4,8 @@ import android.Manifest;
 import android.app.Activity;
 import android.content.Context;
 import android.content.pm.PackageManager;
+import android.media.AudioManager;
+import android.media.ToneGenerator;
 import android.os.Build;
 import android.os.Handler;
 import android.os.Looper;
@@ -50,8 +52,7 @@ public class VoskListenerPlugin implements FlutterPlugin, MethodChannel.MethodCa
     private static final ExecutorService IO = Executors.newSingleThreadExecutor();
 
     // Shared across engines (guarded by IO's single thread).
-    private static Model model;
-    private static String modelPath;
+    private static final Map<String, Model> models = new HashMap<>();
     private static Recognizer recognizer;
     private static SpeechService speech;
     private static volatile VoskListenerPlugin owner;
@@ -111,13 +112,13 @@ public class VoskListenerPlugin implements FlutterPlugin, MethodChannel.MethodCa
                 String grammar = call.argument("grammar");
                 IO.execute(() -> {
                     try {
-                        // Keep a loaded model: switching wake -> dictation must be quick.
+                        // Keep loaded models: switching wake -> dictation must be quick,
+                        // even when the two use different models.
                         releaseSpeech();
-                        if (model == null || !path.equals(modelPath)) {
-                            if (model != null) model.close();
-                            model = null;
+                        Model model = models.get(path);
+                        if (model == null) {
                             model = new Model(path);
-                            modelPath = path;
+                            models.put(path, model);
                         }
                         recognizer = grammar == null ? new Recognizer(model, 16000f) : new Recognizer(model, 16000f, grammar);
                         speech = new SpeechService(recognizer, 16000f);
@@ -156,6 +157,10 @@ public class VoskListenerPlugin implements FlutterPlugin, MethodChannel.MethodCa
                 vibrate();
                 result.success(null);
                 break;
+            case "beep":
+                beep(call.argument("kind"));
+                result.success(null);
+                break;
             default:
                 result.notImplemented();
         }
@@ -173,11 +178,8 @@ public class VoskListenerPlugin implements FlutterPlugin, MethodChannel.MethodCa
 
     private static void release() {
         releaseSpeech();
-        if (model != null) {
-            model.close();
-            model = null;
-        }
-        modelPath = null;
+        for (Model m : models.values()) m.close();
+        models.clear();
     }
 
     private static void releaseSpeech() {
@@ -229,6 +231,21 @@ public class VoskListenerPlugin implements FlutterPlugin, MethodChannel.MethodCa
         }
         if (v == null || !v.hasVibrator()) return;
         v.vibrate(VibrationEffect.createWaveform(new long[]{0, 120, 90, 120}, -1));
+    }
+
+    /** start = one high beep, end = two beeps, fail = low "nope". Follows notification volume. */
+    private void beep(String kind) {
+        int tone, ms;
+        if ("start".equals(kind)) { tone = ToneGenerator.TONE_PROP_BEEP; ms = 200; }
+        else if ("end".equals(kind)) { tone = ToneGenerator.TONE_PROP_ACK; ms = 400; }
+        else { tone = ToneGenerator.TONE_PROP_NACK; ms = 400; }
+        try {
+            ToneGenerator g = new ToneGenerator(AudioManager.STREAM_NOTIFICATION, 90);
+            g.startTone(tone, ms);
+            main.postDelayed(g::release, ms + 300);
+        } catch (RuntimeException ignored) {
+            // No audio hardware available right now: the vibration still confirms.
+        }
     }
 
     private static void unzip(File zip, File dest) throws IOException {

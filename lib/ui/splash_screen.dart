@@ -71,11 +71,8 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
                 ),
                 const SizedBox(height: 10),
                 const Text('from the house of', style: TextStyle(color: Pal.fog, fontSize: 11, letterSpacing: 0.6)),
-                const SizedBox(height: 2),
-                const Text(
-                  'arwee',
-                  style: TextStyle(color: Pal.paper, fontSize: 17, fontWeight: FontWeight.w700, letterSpacing: 0.5),
-                ),
+                const SizedBox(height: 6),
+                const ArweeLogo(height: 20),
                 const SizedBox(height: 28),
               ],
             ),
@@ -84,4 +81,24 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
       ),
     );
   }
+}
+
+/// The parent-company wordmark, recoloured to Arwee gold on any background.
+class ArweeLogo extends StatelessWidget {
+  const ArweeLogo({super.key, this.height = 20});
+
+  final double height;
+
+  @override
+  Widget build(BuildContext context) => ColorFiltered(
+    // Paint every pixel gold; opacity comes from how "gold" (not white or
+    // transparent) the source pixel is, so a white backdrop disappears.
+    colorFilter: const ColorFilter.matrix([
+      0, 0, 0, 0, 186, //
+      0, 0, 0, 0, 154,
+      0, 0, 0, 0, 86,
+      0, 0, -1.5, 1.5, 0,
+    ]),
+    child: Image.asset('assets/arwee_logo.webp', height: height, filterQuality: FilterQuality.medium),
+  );
 }

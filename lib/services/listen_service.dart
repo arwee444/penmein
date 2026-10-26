@@ -21,7 +21,6 @@ abstract final class Msg {
   static const noted = 'noted';
 }
 
-const _modelKey = 'pm_model_path';
 const _title = 'Pen Me In';
 
 String endMessage(NoteEnd r) => switch (r) {
@@ -45,7 +44,7 @@ enum _Mode { waiting, dictating, error }
 
 class ListenTaskHandler extends TaskHandler {
   VoiceSettings _s = const VoiceSettings();
-  String? _model;
+  String? _wakePath, _notePath;
   NoteInbox? _inbox;
   _Mode _mode = _Mode.waiting;
   String? _error;
@@ -96,7 +95,7 @@ class ListenTaskHandler extends TaskHandler {
   @override
   Future<void> onStart(DateTime timestamp, TaskStarter starter) async {
     _s = await VoiceSettings.load();
-    _model = await FlutterForegroundTask.getData<String>(key: _modelKey);
+    await _resolveModels();
     _inbox = NoteInbox((await getApplicationSupportDirectory()).path);
     await _listenForWake();
   }
@@ -104,9 +103,9 @@ class ListenTaskHandler extends TaskHandler {
   Future<void> _listenForWake() async {
     if (_destroyed) return;
     _mode = _Mode.waiting;
-    final model = _model;
-    if (model == null || !await VoskModelManager.isInstalledAt(model)) {
-      _fail('Speech model missing');
+    final model = _wakePath;
+    if (model == null) {
+      _fail('No English speech model installed');
     } else if (!await VoskListener.hasPermission()) {
       _fail('No microphone permission');
     } else {
@@ -137,7 +136,7 @@ class ListenTaskHandler extends TaskHandler {
   }
 
   Future<void> _takeNote() async {
-    if (_mode == _Mode.dictating || _model == null) return;
+    if (_mode == _Mode.dictating || _notePath == null) return;
     _mode = _Mode.dictating;
     _status = null;
     await _wakeSub?.cancel();
@@ -145,7 +144,7 @@ class ListenTaskHandler extends TaskHandler {
     if (_s.vibrate) VoskListener.vibrate().catchError((_) {});
     await _show();
     final d = _dict = Dictation(_s, onLive: _sendLive);
-    final r = await d.run(_model!);
+    final r = await d.run(_notePath!);
     _dict = null;
     if (_destroyed) return;
     if (r.hasNote) {
@@ -198,7 +197,22 @@ class ListenTaskHandler extends TaskHandler {
 
   Future<void> _reloadSettings() async {
     _s = await VoiceSettings.load();
-    if (_mode != _Mode.dictating) await _listenForWake();
+    if (_mode == _Mode.dictating) return;
+    // Free the old models (the note model may have changed), then reload.
+    await _wakeSub?.cancel();
+    _wakeSub = null;
+    try {
+      await VoskListener.stop();
+    } catch (_) {}
+    await _resolveModels();
+    await _listenForWake();
+  }
+
+  Future<void> _resolveModels() async {
+    final w = await SpeechModels.wakeModel(_s.modelId);
+    final n = await SpeechModels.noteModel(_s.modelId);
+    _wakePath = w == null ? null : await SpeechModels.pathOf(w);
+    _notePath = n == null ? null : await SpeechModels.pathOf(n);
   }
 
   @override
@@ -287,14 +301,13 @@ class ListenController extends ChangeNotifier {
 
   Future<StartResult> start() async {
     if (!isSupported) return StartResult.unsupported;
-    if (!await VoskModelManager.isInstalled()) return StartResult.needsModel;
+    if (await SpeechModels.wakeModel((await VoiceSettings.load()).modelId) == null) return StartResult.needsModel;
     if (!await VoskListener.requestPermission()) return StartResult.needsMicrophone;
     var n = await FlutterForegroundTask.checkNotificationPermission();
     if (n != NotificationPermission.granted) n = await FlutterForegroundTask.requestNotificationPermission();
     if (n != NotificationPermission.granted) return StartResult.needsNotifications;
     lastError = null;
     try {
-      await FlutterForegroundTask.saveData(key: _modelKey, value: await VoskModelManager.modelPath());
       if (await FlutterForegroundTask.isRunningService) await FlutterForegroundTask.stopService();
       final res = await FlutterForegroundTask.startService(
         serviceId: 5151,

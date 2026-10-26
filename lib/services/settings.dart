@@ -15,6 +15,8 @@ class VoiceSettings {
     this.pauseMs = 2500,
     this.maxSeconds = 120,
     this.vibrate = true,
+    this.beep = true,
+    this.modelId = 'en-us',
   });
 
   final List<String> wakePhrases;
@@ -23,6 +25,10 @@ class VoiceSettings {
   final int pauseMs;
   final int maxSeconds;
   final bool vibrate;
+  final bool beep;
+
+  /// Speech model that writes notes (see speechModels).
+  final String modelId;
 
   static const _key = 'pm_settings';
 
@@ -42,6 +48,8 @@ class VoiceSettings {
     int? pauseMs,
     int? maxSeconds,
     bool? vibrate,
+    bool? beep,
+    String? modelId,
   }) => VoiceSettings(
     wakePhrases: wakePhrases ?? this.wakePhrases,
     stopPhrases: stopPhrases ?? this.stopPhrases,
@@ -49,6 +57,8 @@ class VoiceSettings {
     pauseMs: pauseMs ?? this.pauseMs,
     maxSeconds: maxSeconds ?? this.maxSeconds,
     vibrate: vibrate ?? this.vibrate,
+    beep: beep ?? this.beep,
+    modelId: modelId ?? this.modelId,
   );
 
   Map<String, Object?> toJson() => {
@@ -58,12 +68,13 @@ class VoiceSettings {
     'pauseMs': pauseMs,
     'maxSeconds': maxSeconds,
     'vibrate': vibrate,
+    'beep': beep,
+    'model': modelId,
   };
 
   static List<String> _list(Object? v, List<String> fallback) {
     if (v is! List) return fallback;
-    final l = v.whereType<String>().where((s) => normalizeSpeech(s).isNotEmpty).toList();
-    return l;
+    return v.whereType<String>().where((s) => normalizeSpeech(s).isNotEmpty).toList();
   }
 
   static VoiceSettings fromJson(Map<String, dynamic> m) {
@@ -75,6 +86,8 @@ class VoiceSettings {
       pauseMs: ((m['pauseMs'] as num?)?.toInt() ?? 2500).clamp(1000, 6000),
       maxSeconds: ((m['maxSeconds'] as num?)?.toInt() ?? 120).clamp(15, 600),
       vibrate: (m['vibrate'] as bool?) ?? true,
+      beep: (m['beep'] as bool?) ?? true,
+      modelId: (m['model'] as String?) ?? 'en-us',
     );
   }
 

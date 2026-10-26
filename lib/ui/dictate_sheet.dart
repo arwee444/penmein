@@ -59,13 +59,16 @@ class _DictateSheetState extends State<_DictateSheet> {
   }
 
   Future<void> _runLocal() async {
+    final s = await VoiceSettings.load();
+    final model = await SpeechModels.noteModel(s.modelId);
+    if (model == null) return _close(const NoteResult('', NoteEnd.error));
     final d = _local = Dictation(
-      await VoiceSettings.load(),
+      s,
       onLive: (t) {
         if (mounted) setState(() => _live = t);
       },
     );
-    final r = await d.run(await VoskModelManager.modelPath());
+    final r = await d.run(await SpeechModels.pathOf(model));
     try {
       await VoskListener.stop();
     } catch (_) {}

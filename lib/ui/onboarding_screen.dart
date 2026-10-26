@@ -28,7 +28,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   Future<void> _check() async {
     final mic = await VoskListener.hasPermission();
     final notif = await FlutterForegroundTask.checkNotificationPermission() == NotificationPermission.granted;
-    final model = await VoskModelManager.isInstalled();
+    final model = await SpeechModels.noteModel('en-us') != null;
     final battery = await FlutterForegroundTask.isIgnoringBatteryOptimizations;
     if (!mounted) return;
     setState(() {

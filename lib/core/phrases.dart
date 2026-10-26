@@ -5,14 +5,17 @@ const defaultWakePhrases = ['pen me in'];
 const defaultStopPhrases = ['done', 'end note'];
 const defaultCancelPhrases = ['cancel note'];
 
+final _nonWord = RegExp(r'[^\p{L}\p{M}\p{N}]+', unicode: true);
+
 /// Lower-case words only: punctuation and apostrophes removed, spaces
 /// collapsed, Vosk's "[unk]" markers dropped. "Pen me IN!" -> "pen me in".
+/// Any script is kept (Hindi notes come back in Devanagari).
 String normalizeSpeech(String s) => s
     .toLowerCase()
     .replaceAll('[unk]', ' ')
     .replaceAll("'", '')
     .replaceAll('’', '')
-    .replaceAll(RegExp(r'[^a-z0-9]+'), ' ')
+    .replaceAll(_nonWord, ' ')
     .trim();
 
 List<String> _words(String s) {

@@ -4,6 +4,7 @@ import 'package:intl/intl.dart';
 
 import '../main.dart';
 import '../services/listen_service.dart';
+import '../services/settings.dart';
 import '../services/vosk_model.dart';
 import '../theme.dart';
 
@@ -34,19 +35,24 @@ Future<void> askBatteryExemption() async {
   }
 }
 
-/// Downloads the speech model with a progress dialog. Returns true when ready.
+/// Makes sure an English model is installed (needed for the wake phrase),
+/// offering the standard one. Returns true when one is ready.
 Future<bool> ensureModel(BuildContext context) async {
-  final m = VoskModelManager.instance;
-  await m.check();
-  if (m.state == VoskModelState.ready) return true;
+  if (await SpeechModels.wakeModel((await VoiceSettings.load()).modelId) != null) return true;
   if (!context.mounted) return false;
+  return downloadModel(context, speechModels.first);
+}
+
+/// Confirms, then downloads [model] with a progress dialog. True when ready.
+Future<bool> downloadModel(BuildContext context, SpeechModel model) async {
+  final m = SpeechModels.instance;
   final go = await showDialog<bool>(
     context: context,
     builder: (c) => AlertDialog(
-      title: const Text('Download speech model?'),
-      content: const Text(
-        'Pen Me In understands speech offline, on your phone. It needs a one-time '
-        'download of the English model (about 40 MB) from alphacephei.com. Wi-Fi recommended.',
+      title: Text('Download ?'),
+      content: Text(
+        'Pen Me In understands speech offline, on your phone. This is a one-time '
+        'download of about  MB from alphacephei.com. Wi-Fi recommended.',
       ),
       actions: [
         TextButton(onPressed: () => Navigator.pop(c, false), child: const Text('Not now')),
@@ -55,7 +61,7 @@ Future<bool> ensureModel(BuildContext context) async {
     ),
   );
   if (go != true || !context.mounted) return false;
-  m.download();
+  m.download(model);
   var closed = false;
   final ok = await showDialog<bool>(
     context: context,
@@ -63,32 +69,33 @@ Future<bool> ensureModel(BuildContext context) async {
     builder: (c) => ListenableBuilder(
       listenable: m,
       builder: (c, _) {
-        if (m.state == VoskModelState.ready && !closed) {
+        final st = m.state(model);
+        if (st == ModelState.ready && !closed) {
           closed = true;
           WidgetsBinding.instance.addPostFrameCallback((_) {
             if (c.mounted) Navigator.pop(c, true);
           });
         }
-        final failed = m.state == VoskModelState.failed;
+        final failed = st == ModelState.failed;
         return AlertDialog(
           title: Text(failed ? 'Download failed' : 'Getting the speech model…'),
           content: failed
-              ? Text(m.error ?? 'Please try again.')
+              ? Text(m.error(model) ?? 'Please try again.')
               : Column(
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    LinearProgressIndicator(value: m.state == VoskModelState.downloading ? m.progress : null),
+                    LinearProgressIndicator(value: st == ModelState.downloading ? m.progress(model) : null),
                     const SizedBox(height: 12),
                     Text(
-                      m.state == VoskModelState.unpacking ? 'Unpacking…' : '${(m.progress * 100).round()}% of ~40 MB',
+                      st == ModelState.unpacking ? 'Unpacking…' : '${(m.progress(model) * 100).round()}% of ~${model.sizeMb} MB',
                       style: const TextStyle(color: Pal.fog),
                     ),
                   ],
                 ),
           actions: [
             if (failed) TextButton(onPressed: () => Navigator.pop(c, false), child: const Text('Close')),
-            if (failed) FilledButton(onPressed: m.download, child: const Text('Retry')),
+            if (failed) FilledButton(onPressed: () => m.download(model), child: const Text('Retry')),
           ],
         );
       },

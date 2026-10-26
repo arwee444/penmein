@@ -21,6 +21,11 @@ class Dictation {
   Timer? _timer;
 
   Future<NoteResult> run(String modelPath) async {
+    // Beep before the mic opens so the tone isn't transcribed.
+    if (settings.beep) {
+      await _beep('start');
+      await Future<void>.delayed(const Duration(milliseconds: 250));
+    }
     _sub = VoskListener.events.listen(_onEvent);
     try {
       await VoskListener.start(modelPath: modelPath);
@@ -34,8 +39,11 @@ class Dictation {
     final r = await _done.future;
     _timer?.cancel();
     await _sub?.cancel();
+    if (settings.beep) await _beep(r.hasNote ? 'end' : 'fail');
     return r;
   }
+
+  static Future<void> _beep(String kind) => VoskListener.beep(kind).catchError((_) {});
 
   void _onEvent(VoskEvent e) {
     final s = _session;

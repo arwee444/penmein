@@ -19,6 +19,11 @@ void main() {
       expect(stripWake('buy milk', defaultWakePhrases), 'buy milk');
     });
 
+    test('keeps non-Latin scripts (Hindi notes)', () {
+      expect(normalizeSpeech('दूध लाना है'), 'दूध लाना है');
+      expect(stripTrailing('दूध लाना बस', ['बस']), 'दूध लाना');
+    });
+
     test('strips trailing stop phrase', () {
       expect(stripTrailing('buy milk end note', defaultStopPhrases), 'buy milk');
       expect(stripTrailing('buy milk done', defaultStopPhrases), 'buy milk');

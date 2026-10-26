@@ -6,6 +6,7 @@ import '../services/settings.dart';
 import '../services/vosk_model.dart';
 import '../theme.dart';
 import 'common.dart';
+import 'models_screen.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -21,7 +22,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
   void initState() {
     super.initState();
     VoiceSettings.load().then((s) => setState(() => _s = s));
-    VoskModelManager.instance.check();
   }
 
   Future<void> _set(VoiceSettings s) async {
@@ -118,6 +118,18 @@ class _SettingsScreenState extends State<SettingsScreen> {
           : ListView(
               padding: const EdgeInsets.only(bottom: 32),
               children: [
+                _header('Speech'),
+                ListTile(
+                  leading: const Icon(Icons.record_voice_over),
+                  title: const Text('Speech models'),
+                  subtitle: Text('Writing notes with: ${modelById(s.modelId)?.label ?? 'English · standard'}'),
+                  trailing: const Icon(Icons.chevron_right),
+                  onTap: () async {
+                    await Navigator.push(context, MaterialPageRoute(builder: (_) => const ModelsScreen()));
+                    final fresh = await VoiceSettings.load();
+                    if (mounted) setState(() => _s = fresh);
+                  },
+                ),
                 _header('Phrases'),
                 _phrases(
                   title: 'Wake phrases',
@@ -167,6 +179,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   trailing: Text(s.maxSeconds < 60 ? '${s.maxSeconds} s' : '${(s.maxSeconds / 60).toStringAsFixed(1)} min'),
                 ),
                 SwitchListTile(
+                  title: const Text('Beep'),
+                  subtitle: const Text('One beep when recording starts, two when the note is saved'),
+                  value: s.beep,
+                  onChanged: (v) => _set(s.copyWith(beep: v)),
+                ),
+                SwitchListTile(
                   title: const Text('Vibrate'),
                   subtitle: const Text('Buzz when a note starts and when it is saved'),
                   value: s.vibrate,
@@ -185,20 +203,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   leading: const Icon(Icons.battery_saver),
                   title: const Text('Allow running in the background'),
                   onTap: askBatteryExemption,
-                ),
-                _header('Speech model'),
-                ListenableBuilder(
-                  listenable: VoskModelManager.instance,
-                  builder: (context, _) {
-                    final m = VoskModelManager.instance;
-                    final ready = m.state == VoskModelState.ready;
-                    return ListTile(
-                      leading: Icon(ready ? Icons.check_circle : Icons.download, color: ready ? Pal.teal : Pal.fog),
-                      title: Text(ready ? 'English model installed' : 'Model not installed'),
-                      subtitle: const Text('Offline. Your speech never leaves the phone.'),
-                      onTap: ready ? null : () => ensureModel(context),
-                    );
-                  },
                 ),
               ],
             ),
