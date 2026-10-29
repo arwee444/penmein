@@ -42,7 +42,7 @@ class NibPainter extends CustomPainter {
       ..lineTo(45, 72)
       ..cubicTo(38, 55, 45, 35, 65, 22)
       ..close();
-    canvas.drawPath(nib, Paint()..color = Pal.teal);
+    canvas.drawPath(nib, Paint()..color = Pal.gold);
     final cut = Paint()
       ..color = Pal.background
       ..strokeWidth = 3;
@@ -50,7 +50,7 @@ class NibPainter extends CustomPainter {
       ..drawLine(const Offset(65, 60), const Offset(65, 106), cut)
       ..drawCircle(const Offset(65, 57), 5, cut);
     final wave = Paint()
-      ..color = Pal.coral
+      ..color = Pal.voice
       ..style = PaintingStyle.stroke
       ..strokeWidth = 4
       ..strokeCap = StrokeCap.round;

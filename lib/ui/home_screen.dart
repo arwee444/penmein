@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../data/notes.dart';
 import '../main.dart';
 import '../theme.dart';
+import 'arwee.dart';
 import 'common.dart';
 import 'dictate_sheet.dart';
 import 'note_screen.dart';
@@ -60,6 +61,7 @@ class _HomeScreenState extends State<HomeScreen> {
       appBar: AppBar(
         title: const Text('Pen Me In', style: TextStyle(fontWeight: FontWeight.w600)),
         actions: [
+          const ArweeCorner(),
           IconButton(
             tooltip: 'Settings',
             icon: const Icon(Icons.tune),
@@ -110,9 +112,9 @@ class _HomeScreenState extends State<HomeScreen> {
                 }
                 return ListView.separated(
                   padding: const EdgeInsets.only(bottom: 160),
-                  itemCount: list.length,
+                  itemCount: list.length + 1,
                   separatorBuilder: (_, _) => const Divider(indent: 16, endIndent: 16),
-                  itemBuilder: (context, i) => _tile(list[i]),
+                  itemBuilder: (context, i) => i == list.length ? const _ArweeSignature() : _tile(list[i]),
                 );
               },
             ),
@@ -126,7 +128,7 @@ class _HomeScreenState extends State<HomeScreen> {
           FloatingActionButton(
             heroTag: 'mic',
             tooltip: 'Dictate a note',
-            backgroundColor: Pal.coral,
+            backgroundColor: Pal.voice,
             foregroundColor: Pal.background,
             onPressed: () => showDictateSheet(context),
             child: const Icon(Icons.mic),
@@ -226,7 +228,7 @@ class _HomeScreenState extends State<HomeScreen> {
           padding: const EdgeInsets.only(top: 4),
           child: Row(
             children: [
-              Icon(voice ? Icons.mic : Icons.keyboard, size: 14, color: voice ? Pal.lavender : Pal.sky),
+              Icon(voice ? Icons.mic : Icons.keyboard, size: 14, color: voice ? Pal.voice : Pal.gold),
               const SizedBox(width: 6),
               Text(formatWhen(n.created), style: const TextStyle(color: Pal.fog, fontSize: 12)),
             ],
@@ -236,4 +238,22 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
     );
   }
+}
+
+/// "an arwee app", shown after the last note (same as Save This Spot).
+class _ArweeSignature extends StatelessWidget {
+  const _ArweeSignature();
+
+  @override
+  Widget build(BuildContext context) => const Padding(
+    padding: EdgeInsets.only(top: 20),
+    child: Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        Text('an ', style: TextStyle(color: Pal.muted, fontSize: 13)),
+        ArweeWordmark(height: 18, opacity: 0.85),
+        Text(' app', style: TextStyle(color: Pal.muted, fontSize: 13)),
+      ],
+    ),
+  );
 }

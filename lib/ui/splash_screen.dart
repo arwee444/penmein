@@ -4,8 +4,10 @@ import 'package:flutter/material.dart';
 
 import '../theme.dart';
 import 'app_mark.dart';
+import 'arwee.dart';
 
-/// Opening screen: the Pen Me In mark up front, the Arwee robot quietly underneath.
+/// Opening screen (same layout as Save This Spot): the Pen Me In mark exactly
+/// centred, the Arwee parent-company credit in the upper middle.
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key, required this.next});
 
@@ -15,9 +17,7 @@ class SplashScreen extends StatefulWidget {
   State<SplashScreen> createState() => _SplashScreenState();
 }
 
-class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderStateMixin {
-  late final _anim = AnimationController(vsync: this, duration: const Duration(milliseconds: 1500))..forward();
-
+class _SplashScreenState extends State<SplashScreen> {
   @override
   void initState() {
     super.initState();
@@ -35,70 +35,65 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
   }
 
   @override
-  void dispose() {
-    _anim.dispose();
-    super.dispose();
-  }
-
-  @override
   Widget build(BuildContext context) {
-    final fade = CurvedAnimation(parent: _anim, curve: const Interval(0, 0.45, curve: Curves.easeOut));
-    // A small "hello" tilt from the robot once everything has faded in.
-    final tilt = CurvedAnimation(parent: _anim, curve: const Interval(0.45, 1));
     return Scaffold(
-      body: SafeArea(
-        child: SizedBox(
-          width: double.infinity,
-          child: FadeTransition(
+      body: TweenAnimationBuilder<double>(
+        tween: Tween(begin: 0, end: 1),
+        duration: const Duration(milliseconds: 1500),
+        builder: (context, t, _) {
+          final fade = Curves.easeOut.transform((t / 0.4).clamp(0, 1));
+          // A small "hello" tilt from the robot once everything has faded in.
+          final tilt = ((t - 0.4) / 0.6).clamp(0.0, 1.0);
+          return Opacity(
             opacity: fade,
-            child: Column(
+            child: Stack(
               children: [
-                const Spacer(flex: 3),
-                const AppMark(size: 104),
-                const SizedBox(height: 20),
-                const Text('Pen Me In', style: TextStyle(fontSize: 30, fontWeight: FontWeight.w700, color: Pal.paper)),
-                const SizedBox(height: 6),
-                const Text('Say it. It\'s written.', style: TextStyle(color: Pal.fog, fontSize: 15)),
-                const Spacer(flex: 4),
-                AnimatedBuilder(
-                  animation: tilt,
-                  builder: (_, child) => Transform.rotate(
-                    angle: 0.12 * math.sin(tilt.value * 2 * math.pi) * (1 - tilt.value),
-                    alignment: Alignment.bottomCenter,
-                    child: child,
+                Align(
+                  alignment: const Alignment(0, -0.56),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Transform.rotate(
+                        angle: 0.12 * math.sin(tilt * 2 * math.pi) * (1 - tilt),
+                        alignment: Alignment.bottomCenter,
+                        child: Image.asset('assets/arwee_robot.png', height: 42, filterQuality: FilterQuality.medium),
+                      ),
+                      const SizedBox(height: 8),
+                      const Text(
+                        'from the house of',
+                        style: TextStyle(color: Pal.fog, fontSize: 10, letterSpacing: 0.6),
+                      ),
+                      const SizedBox(height: 5),
+                      const ArweeWordmark(height: 21, opacity: 1, shimmer: false),
+                    ],
                   ),
-                  child: Image.asset('assets/arwee_robot.png', height: 56, filterQuality: FilterQuality.medium),
                 ),
-                const SizedBox(height: 10),
-                const Text('from the house of', style: TextStyle(color: Pal.fog, fontSize: 11, letterSpacing: 0.6)),
-                const SizedBox(height: 6),
-                const ArweeLogo(height: 20),
-                const SizedBox(height: 28),
+                Center(
+                  child: Transform.translate(
+                    offset: Offset(0, 8 * (1 - fade)),
+                    child: const Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        AppMark(size: 96),
+                        SizedBox(height: 20),
+                        Text(
+                          'Pen Me In',
+                          style: TextStyle(fontSize: 34, fontWeight: FontWeight.w800, letterSpacing: -0.8, color: Pal.paper),
+                        ),
+                        SizedBox(height: 8),
+                        Text(
+                          'Say it. It\'s written.',
+                          style: TextStyle(fontSize: 16, color: Pal.gold, fontWeight: FontWeight.w600, letterSpacing: 0.4),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
               ],
             ),
-          ),
-        ),
+          );
+        },
       ),
     );
   }
-}
-
-/// The parent-company wordmark, recoloured to Arwee gold on any background.
-class ArweeLogo extends StatelessWidget {
-  const ArweeLogo({super.key, this.height = 20});
-
-  final double height;
-
-  @override
-  Widget build(BuildContext context) => ColorFiltered(
-    // Paint every pixel gold; opacity comes from how "gold" (not white or
-    // transparent) the source pixel is, so a white backdrop disappears.
-    colorFilter: const ColorFilter.matrix([
-      0, 0, 0, 0, 186, //
-      0, 0, 0, 0, 154,
-      0, 0, 0, 0, 86,
-      0, 0, -1.5, 1.5, 0,
-    ]),
-    child: Image.asset('assets/arwee_logo.webp', height: height, filterQuality: FilterQuality.medium),
-  );
 }

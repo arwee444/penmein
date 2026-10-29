@@ -90,7 +90,7 @@ class _ModelsScreenState extends State<ModelsScreen> {
     return Card(
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(14),
-        side: BorderSide(color: inUse ? Pal.teal : Pal.smoke),
+        side: BorderSide(color: inUse ? Pal.gold : Pal.smoke),
       ),
       child: Padding(
         padding: const EdgeInsets.fromLTRB(14, 12, 8, 12),
@@ -134,9 +134,9 @@ class _ModelsScreenState extends State<ModelsScreen> {
                           padding: EdgeInsets.symmetric(vertical: 12),
                           child: Row(
                             children: [
-                              Icon(Icons.check_circle, size: 18, color: Pal.teal),
+                              Icon(Icons.check_circle, size: 18, color: Pal.gold),
                               SizedBox(width: 6),
-                              Text('Writing your notes', style: TextStyle(color: Pal.teal)),
+                              Text('Writing your notes', style: TextStyle(color: Pal.gold)),
                             ],
                           ),
                         )

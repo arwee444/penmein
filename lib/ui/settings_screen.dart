@@ -5,6 +5,7 @@ import '../main.dart';
 import '../services/settings.dart';
 import '../services/vosk_model.dart';
 import '../theme.dart';
+import 'arwee.dart';
 import 'common.dart';
 import 'models_screen.dart';
 
@@ -105,7 +106,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   Widget _header(String t) => Padding(
     padding: const EdgeInsets.fromLTRB(16, 20, 16, 4),
-    child: Text(t.toUpperCase(), style: const TextStyle(color: Pal.teal, fontSize: 12, letterSpacing: 1.2)),
+    child: Text(t.toUpperCase(), style: const TextStyle(color: Pal.gold, fontSize: 12, letterSpacing: 1.2)),
   );
 
   @override
@@ -203,6 +204,30 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   leading: const Icon(Icons.battery_saver),
                   title: const Text('Allow running in the background'),
                   onTap: askBatteryExemption,
+                ),
+                _header('About'),
+                const ListTile(
+                  leading: Icon(Icons.info_outline),
+                  title: Text('Pen Me In 1.2.0'),
+                  subtitle: Text('Say it. It\'s written. Personal test build.'),
+                ),
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(vertical: 20),
+                    decoration: BoxDecoration(
+                      color: Pal.surface,
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(color: Pal.smoke),
+                    ),
+                    child: const Column(
+                      children: [
+                        ArweeWordmark(height: 34, opacity: 1),
+                        SizedBox(height: 8),
+                        Text('Pen Me In is made by arwee', style: TextStyle(color: Pal.fog, fontSize: 13, letterSpacing: 0.3)),
+                      ],
+                    ),
+                  ),
                 ),
               ],
             ),

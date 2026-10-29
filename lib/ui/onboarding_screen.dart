@@ -5,6 +5,8 @@ import 'package:vosk_listener/vosk_listener.dart';
 import '../main.dart';
 import '../services/vosk_model.dart';
 import '../theme.dart';
+import 'app_mark.dart';
+import 'arwee.dart';
 import 'common.dart';
 import 'home_screen.dart';
 
@@ -52,7 +54,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
         children: [
           CircleAvatar(
             radius: 14,
-            backgroundColor: done ? Pal.teal : Pal.raised,
+            backgroundColor: done ? Pal.gold : Pal.raised,
             child: done
                 ? const Icon(Icons.check, size: 16, color: Pal.background)
                 : Text('$n', style: const TextStyle(color: Pal.paper, fontSize: 13)),
@@ -84,8 +86,14 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
         child: ListView(
           padding: const EdgeInsets.all(20),
           children: [
-            const SizedBox(height: 12),
-            const Icon(Icons.edit_note, size: 56, color: Pal.teal),
+            const Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Padding(padding: EdgeInsets.only(top: 12), child: AppMark(size: 56)),
+                Spacer(),
+                ArweeWordmark(height: 22),
+              ],
+            ),
             const SizedBox(height: 12),
             const Text('Pen Me In', style: TextStyle(fontSize: 28, fontWeight: FontWeight.w700)),
             const SizedBox(height: 8),
