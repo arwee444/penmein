@@ -83,6 +83,12 @@ class NoteSession {
     return null;
   }
 
+  /// The mic was off for a moment (iPhone restarts Apple's recogniser): don't
+  /// count that time as part of the pause.
+  void resume(DateTime now) {
+    if (_result == null) _lastHeard = now;
+  }
+
   /// The user tapped Done.
   NoteResult finishNow() => _result ?? _finish(NoteEnd.stopPhrase);
 

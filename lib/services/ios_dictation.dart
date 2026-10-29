@@ -46,6 +46,7 @@ class IosDictation {
     }
     _session = settings.newSession(DateTime.now());
     _stt.statusListener = (status) {
+      if (status == SpeechToText.listeningStatus) _session?.resume(DateTime.now());
       if (status == SpeechToText.notListeningStatus || status == SpeechToText.doneStatus) _restart();
     };
     _stt.errorListener = (_) => _restart();

@@ -133,4 +133,13 @@ Mac notes for next time:
   words Apple hadn't confirmed, and listens again (retrying for up to ~1.5 s). Results from the old listen are
   ignored, so text isn't doubled. The note still ends only on the pause setting, "done", Done or the length limit.
   There's a gap of about a quarter second while it restarts, so a word said at that exact moment can be missed.
-- Not yet confirmed on the phone.
+- Also: the pause clock now restarts when the mic comes back on (`NoteSession.resume`), so the restart gap
+  doesn't count towards the pause.
+
+### Phone test feedback, round 3
+
+- **In-app mic: confirmed working on the iPhone.** On-device log: "Buy milk" … about a 4 s pause … "call the plumber
+  tomorrow done" became one note saved by "done" (pause setting 6 s). The user then confirmed more notes worked.
+- **Lock screen (Siri): not working well.** Siri ends the note at the first short pause, and apps can't change that.
+  Next we try a user-built Shortcut: **Dictate Text** (Stop Listening: On Tap) → **Pen Me In › Pen me in**
+  (Note = Dictated Text), started from the Action Button or "Hey Siri, Long Note". Results pending.
