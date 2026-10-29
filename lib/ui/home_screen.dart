@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../data/notes.dart';
 import '../main.dart';
 import '../theme.dart';
+import '../services/listen_service.dart';
 import 'arwee.dart';
 import 'common.dart';
 import 'dictate_sheet.dart';
@@ -145,7 +146,7 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _listenCard() => ListenableBuilder(
+  Widget _listenCard() => !ListenController.isSupported ? const _SiriCard() : ListenableBuilder(
     listenable: listen,
     builder: (context, _) {
       final on = listen.isRunning;
@@ -254,6 +255,37 @@ class _ArweeSignature extends StatelessWidget {
         ArweeWordmark(height: 18, opacity: 0.85),
         Text(' app', style: TextStyle(color: Pal.muted, fontSize: 13)),
       ],
+    ),
+  );
+}
+
+/// iPhone: no background listening, so point to Siri instead of the switch.
+class _SiriCard extends StatelessWidget {
+  const _SiriCard();
+
+  @override
+  Widget build(BuildContext context) => Card(
+    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18), side: const BorderSide(color: Pal.smoke)),
+    child: const Padding(
+      padding: EdgeInsets.fromLTRB(16, 14, 16, 14),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.record_voice_over, color: Pal.gold),
+              SizedBox(width: 10),
+              Text('Hands-free with Siri', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600)),
+            ],
+          ),
+          SizedBox(height: 6),
+          Text(
+            'Say "Hey Siri, Pen Me In", then your note. Works from the lock screen. '
+            'Or set it on the Action Button: Settings › Action Button › Shortcut › Pen me in.',
+            style: TextStyle(color: Pal.fog, height: 1.3),
+          ),
+        ],
+      ),
     ),
   );
 }

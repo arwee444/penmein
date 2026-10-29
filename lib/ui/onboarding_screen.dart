@@ -5,6 +5,8 @@ import 'package:vosk_listener/vosk_listener.dart';
 import '../main.dart';
 import '../services/vosk_model.dart';
 import '../theme.dart';
+import '../services/ios_dictation.dart';
+import '../services/listen_service.dart';
 import 'app_mark.dart';
 import 'arwee.dart';
 import 'common.dart';
@@ -28,6 +30,12 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   }
 
   Future<void> _check() async {
+    if (!ListenController.isSupported) {
+      // iPhone: only mic + speech permission (no service, model or battery).
+      final ok = await IosDictation.hasPermission;
+      if (mounted) setState(() => _mic = ok);
+      return;
+    }
     final mic = await VoskListener.hasPermission();
     final notif = await FlutterForegroundTask.checkNotificationPermission() == NotificationPermission.granted;
     final model = await SpeechModels.noteModel('en-us') != null;
@@ -97,12 +105,23 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
             const SizedBox(height: 12),
             const Text('Pen Me In', style: TextStyle(fontSize: 28, fontWeight: FontWeight.w700)),
             const SizedBox(height: 8),
-            const Text(
-              'Say "pen me in", even with your phone locked, then say your note. '
-              'It is written down here. Speech is recognised offline, on your phone.',
-              style: TextStyle(color: Pal.fog, height: 1.4),
+            Text(
+              ListenController.isSupported
+                  ? 'Say "pen me in", even with your phone locked, then say your note. '
+                        'It is written down here. Speech is recognised offline, on your phone.'
+                  : 'Say "Hey Siri, Pen Me In", even with your phone locked, then say your note. It is written down here.',
+              style: const TextStyle(color: Pal.fog, height: 1.4),
             ),
             const SizedBox(height: 20),
+            if (!ListenController.isSupported) ...[
+              _step(1, 'Microphone & speech', 'To turn the notes you dictate in the app into text.', _mic, () async {
+                await IosDictation.requestPermission();
+                _check();
+              }, 'Allow'),
+              const SizedBox(height: 10),
+              _step(2, 'Siri', 'Say "Hey Siri, Pen Me In", then your note, even from the lock screen. '
+                  'You can also put it on the Action Button: Settings › Action Button › Shortcut › Pen me in.', true, () {}, ''),
+            ] else ...[
             _step(1, 'Microphone', 'To hear your wake phrase and your notes.', _mic, () async {
               await VoskListener.requestPermission();
               _check();
@@ -122,11 +141,12 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
               await askBatteryExemption();
               _check();
             }, 'Allow'),
+            ],
             const SizedBox(height: 24),
             FilledButton(
               onPressed: _finish,
               style: FilledButton.styleFrom(minimumSize: const Size.fromHeight(48)),
-              child: Text(_mic && _notif && _model ? 'Start' : 'Skip for now'),
+              child: Text(_mic && (!ListenController.isSupported || (_notif && _model)) ? 'Start' : 'Skip for now'),
             ),
           ],
         ),

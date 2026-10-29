@@ -3,6 +3,7 @@ import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:penmein/theme.dart';
 import 'package:penmein/ui/app_mark.dart';
 
 /// Regenerates the launcher icons from [NibPainter]:
@@ -32,6 +33,14 @@ void main() {
         );
       }
       await render('build/icon_preview.png', 512, const NibPainter());
+      // iOS: full-bleed square (iOS rounds the corners itself), same mark
+      // scale as the Android tile. Resized + flattened to 24-bit in PowerShell.
+      final rec = ui.PictureRecorder();
+      final canvas = Canvas(rec)..drawRect(const Rect.fromLTWH(0, 0, 1024, 1024), Paint()..color = Pal.background);
+      const NibPainter(background: false).paint(canvas, const Size.square(1024));
+      final img = await rec.endRecording().toImage(1024, 1024);
+      final png = await img.toByteData(format: ui.ImageByteFormat.png);
+      File('build/ios_icon_1024.png').writeAsBytesSync(png!.buffer.asUint8List());
     });
   });
 }

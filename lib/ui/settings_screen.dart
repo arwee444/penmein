@@ -5,6 +5,7 @@ import '../main.dart';
 import '../services/settings.dart';
 import '../services/vosk_model.dart';
 import '../theme.dart';
+import '../services/listen_service.dart';
 import 'arwee.dart';
 import 'common.dart';
 import 'models_screen.dart';
@@ -104,6 +105,21 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
+  /// iPhone: hands-free notes go through Siri (no background listening).
+  List<Widget> _siri() => [
+    _header('Siri'),
+    const ListTile(
+      leading: Icon(Icons.record_voice_over, color: Pal.gold),
+      title: Text('"Hey Siri, Pen Me In"'),
+      subtitle: Text('Siri asks what to write down and saves it here, even from the lock screen.'),
+    ),
+    const ListTile(
+      leading: Icon(Icons.touch_app_outlined),
+      title: Text('Action Button'),
+      subtitle: Text('Settings › Action Button › Shortcut › Pen me in'),
+    ),
+  ];
+
   Widget _header(String t) => Padding(
     padding: const EdgeInsets.fromLTRB(16, 20, 16, 4),
     child: Text(t.toUpperCase(), style: const TextStyle(color: Pal.gold, fontSize: 12, letterSpacing: 1.2)),
@@ -112,6 +128,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   @override
   Widget build(BuildContext context) {
     final s = _s;
+    final android = ListenController.isSupported;
     return Scaffold(
       appBar: AppBar(title: const Text('Settings')),
       body: s == null
@@ -119,8 +136,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
           : ListView(
               padding: const EdgeInsets.only(bottom: 32),
               children: [
-                _header('Speech'),
-                ListTile(
+                if (!android) ..._siri(),
+                if (android) _header('Speech'),
+                if (android) ListTile(
                   leading: const Icon(Icons.record_voice_over),
                   title: const Text('Speech models'),
                   subtitle: Text('Writing notes with: ${modelById(s.modelId)?.label ?? 'English · standard'}'),
@@ -132,7 +150,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   },
                 ),
                 _header('Phrases'),
-                _phrases(
+                if (android) _phrases(
                   title: 'Wake phrases',
                   help: 'Say one of these to start a note. 2–4 uncommon words work best.',
                   list: s.wakePhrases,
@@ -179,6 +197,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   ),
                   trailing: Text(s.maxSeconds < 60 ? '${s.maxSeconds} s' : '${(s.maxSeconds / 60).toStringAsFixed(1)} min'),
                 ),
+                if (android) ...[
                 SwitchListTile(
                   title: const Text('Beep'),
                   subtitle: const Text('One beep when recording starts, two when the note is saved'),
@@ -205,6 +224,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   title: const Text('Allow running in the background'),
                   onTap: askBatteryExemption,
                 ),
+                ],
                 _header('About'),
                 const ListTile(
                   leading: Icon(Icons.info_outline),
