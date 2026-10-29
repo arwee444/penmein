@@ -74,3 +74,36 @@ flutter run --release
 - Siri on a locked phone may ask to unlock depending on settings; note in the check results.
 - Lock Screen / Control Center control (widget extension + App Group) needs the paid Developer Program;
   not done, same as Save This Spot.
+
+## Mac session results (2026-10-29, MacBook Air M3)
+
+Toolchain: Xcode 27.1, Flutter 3.47.7 stable, CocoaPods 1.17.0, iPhone 17 on iOS 26.6.2 (USB).
+
+**Build: done.**
+- `flutter pub get` OK. `pod install` OK. It installs only the `Flutter` pod, because every iOS plugin
+  comes in as a Swift Package (Flutter prints a "migrate to Swift Package Manager" note; it's harmless and
+  left for later).
+- Signing: automatic, team `24U49H3267` (same as Save This Spot), set on the three Runner build configs in
+  `project.pbxproj`. Added the `Pods-Runner` `#include?` lines to `ios/Flutter/{Debug,Release}.xcconfig`, as in
+  Save This Spot.
+- `PenNoteIntent.swift` compiled first time, with **no changes needed**. The intent is in the app's
+  `Metadata.appintents`, so Siri and Shortcuts can see it.
+- `flutter build ios --release` OK (18.3 MB). `flutter run --release` installed and launched "Pen Me In"
+  1.2.0 (5) on the iPhone.
+- `flutter analyze` clean, `flutter test` all passing.
+
+**Acceptance checks**
+
+| # | Check | Result |
+|---|---|---|
+| 1 | Splash, Notes, Settings, first run look like Android v1.2.0 | **Not checked yet**: needs someone looking at the phone |
+| 2 | Typed note: add, edit, search, copy, share, delete | **Not checked yet**: on the phone |
+| 3 | Mic + speech prompts, dictation saves after pause / "done" | Partly. The built Info.plist has the expected wording for both prompts. Prompts and dictation still need trying on the phone |
+| 4 | "Hey Siri, Pen Me In" unlocked/locked, Shortcuts, Action Button | Partly. The intent compiles and is registered in the app metadata. Tested off the phone: notes written by the intent's inbox code (including quotes, `/`, emoji and Devanagari) are read back by the Dart `NoteInbox.take()` with id, text, time and the 🎙 voice source intact. Siri itself still needs trying on the phone (unlocked, then locked) |
+| 5 | No listening switch, speech models, beep/vibrate, battery on iPhone | Code check only. Home, Settings, onboarding and dictation are all gated on `ListenController.isSupported` (Android only). Still needs a look on the phone |
+| 6 | Android APK rebuilt, behaviour unchanged | **Not done on the Mac**: no Dart/Android code changed in this session; rebuild on the PC |
+
+Mac notes for next time:
+- `flutter` isn't on the shell PATH: it lives at `~/development/flutter/bin`.
+- `pod` lives at `~/.gem/ruby/2.6.0/bin`, and it crashes with `Unicode Normalization not appropriate for
+  ASCII-8BIT` unless you set `export LANG=en_US.UTF-8 LC_ALL=en_US.UTF-8` first.
