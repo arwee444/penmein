@@ -74,6 +74,39 @@ String? stripTrailing(String text, Iterable<String> phrases) {
   return null;
 }
 
+final _tags = RegExp(r'\[[^\]]*\]|\([^)]*\)');
+final _edgePunct = RegExp(r'^[\s,;:.\-–—]+|[\s,;:\-–—]+$');
+
+/// Cleans Whisper's output, keeping its capitals and punctuation: drops
+/// "[BLANK_AUDIO]"/"(music)" style tags, a leading wake phrase and a trailing
+/// stop phrase ("Buy milk. Done." -> "Buy milk.").
+String cleanTranscript(String text, {Iterable<String> wake = const [], Iterable<String> stop = const []}) {
+  var words = text.replaceAll(_tags, ' ').split(RegExp(r'\s+')).where((w) => w.isNotEmpty).toList();
+  bool matches(List<String> slice, List<String> phrase) {
+    if (slice.length != phrase.length) return false;
+    for (var i = 0; i < phrase.length; i++) {
+      if (normalizeSpeech(slice[i]) != phrase[i]) return false;
+    }
+    return true;
+  }
+
+  for (final p in wake) {
+    final pw = _words(p);
+    if (pw.isNotEmpty && words.length >= pw.length && matches(words.sublist(0, pw.length), pw)) {
+      words = words.sublist(pw.length);
+      break;
+    }
+  }
+  for (final p in stop) {
+    final pw = _words(p);
+    if (pw.isNotEmpty && words.length >= pw.length && matches(words.sublist(words.length - pw.length), pw)) {
+      words = words.sublist(0, words.length - pw.length);
+      break;
+    }
+  }
+  return tidyNote(words.join(' ').replaceAll(_edgePunct, ''));
+}
+
 /// "buy milk" -> "Buy milk".
 String tidyNote(String s) {
   final t = s.trim();

@@ -86,6 +86,10 @@ class _DictateSheetState extends State<_DictateSheet> {
     if (model == null) return _close(const NoteResult('', NoteEnd.error));
     final d = _local = Dictation(
       s,
+      whisperPath: await SpeechModels.whisperPath(s.whisperId),
+      onPolishing: () {
+        if (mounted) setState(() => _live = '✍ Writing it down…');
+      },
       onLive: (t) {
         if (mounted) setState(() => _live = t);
       },

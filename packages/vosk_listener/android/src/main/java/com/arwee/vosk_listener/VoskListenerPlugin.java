@@ -15,11 +15,14 @@ import android.os.VibratorManager;
 
 import androidx.annotation.NonNull;
 
+import android.media.AudioFormat;
+import android.media.AudioRecord;
+import android.media.MediaRecorder;
+
 import org.vosk.Model;
 import org.vosk.Recognizer;
-import org.vosk.android.RecognitionListener;
-import org.vosk.android.SpeechService;
 
+import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
@@ -54,8 +57,13 @@ public class VoskListenerPlugin implements FlutterPlugin, MethodChannel.MethodCa
     // Shared across engines (guarded by IO's single thread).
     private static final Map<String, Model> models = new HashMap<>();
     private static Recognizer recognizer;
-    private static SpeechService speech;
+    private static AudioRecord audio;
+    private static Thread micThread;
+    private static volatile boolean running;
     private static volatile VoskListenerPlugin owner;
+    private static final int SAMPLE_RATE = 16000;
+    private static final Object PCM_LOCK = new Object();
+    private static ByteArrayOutputStream pcm;
 
     private final Handler main = new Handler(Looper.getMainLooper());
     private MethodChannel channel;
@@ -110,6 +118,7 @@ public class VoskListenerPlugin implements FlutterPlugin, MethodChannel.MethodCa
             case "start": {
                 String path = call.argument("modelPath");
                 String grammar = call.argument("grammar");
+                Boolean keep = call.argument("record");
                 IO.execute(() -> {
                     try {
                         // Keep loaded models: switching wake -> dictation must be quick,
@@ -120,13 +129,13 @@ public class VoskListenerPlugin implements FlutterPlugin, MethodChannel.MethodCa
                             model = new Model(path);
                             models.put(path, model);
                         }
-                        recognizer = grammar == null ? new Recognizer(model, 16000f) : new Recognizer(model, 16000f, grammar);
-                        speech = new SpeechService(recognizer, 16000f);
+                        recognizer = grammar == null ? new Recognizer(model, SAMPLE_RATE) : new Recognizer(model, SAMPLE_RATE, grammar);
+                        synchronized (PCM_LOCK) {
+                            pcm = Boolean.TRUE.equals(keep) ? new ByteArrayOutputStream(SAMPLE_RATE * 2 * 30) : null;
+                        }
                         owner = this;
-                        main.post(() -> {
-                            speech.startListening(listener(this));
-                            result.success(true);
-                        });
+                        startMic(this);
+                        main.post(() -> result.success(true));
                     } catch (Throwable e) {
                         release();
                         main.post(() -> result.error("start_failed", String.valueOf(e.getMessage()), null));
@@ -153,6 +162,9 @@ public class VoskListenerPlugin implements FlutterPlugin, MethodChannel.MethodCa
                 });
                 break;
             }
+            case "takeAudio":
+                result.success(takeAudio());
+                break;
             case "vibrate":
                 vibrate();
                 result.success(null);
@@ -166,14 +178,62 @@ public class VoskListenerPlugin implements FlutterPlugin, MethodChannel.MethodCa
         }
     }
 
-    private static RecognitionListener listener(VoskListenerPlugin p) {
-        return new RecognitionListener() {
-            @Override public void onPartialResult(String hypothesis) { p.emit("partial", hypothesis); }
-            @Override public void onResult(String hypothesis) { p.emit("result", hypothesis); }
-            @Override public void onFinalResult(String hypothesis) { p.emit("result", hypothesis); }
-            @Override public void onError(Exception e) { p.emit("error", String.valueOf(e.getMessage())); }
-            @Override public void onTimeout() { p.emit("error", "timeout"); }
-        };
+    /**
+     * Our own mic loop (instead of Vosk's SpeechService) so the raw audio of a
+     * note can also be kept for Whisper. Same source and format Vosk uses.
+     */
+    private static void startMic(VoskListenerPlugin p) {
+        int min = AudioRecord.getMinBufferSize(SAMPLE_RATE, AudioFormat.CHANNEL_IN_MONO, AudioFormat.ENCODING_PCM_16BIT);
+        AudioRecord r = new AudioRecord(MediaRecorder.AudioSource.VOICE_RECOGNITION, SAMPLE_RATE,
+                AudioFormat.CHANNEL_IN_MONO, AudioFormat.ENCODING_PCM_16BIT, Math.max(min, SAMPLE_RATE));
+        if (r.getState() != AudioRecord.STATE_INITIALIZED) {
+            r.release();
+            throw new IllegalStateException("Microphone unavailable");
+        }
+        r.startRecording();
+        if (r.getRecordingState() != AudioRecord.RECORDSTATE_RECORDING) {
+            r.release();
+            throw new IllegalStateException("Microphone busy");
+        }
+        audio = r;
+        running = true;
+        final Recognizer rec = recognizer;
+        micThread = new Thread(() -> {
+            short[] buf = new short[SAMPLE_RATE / 10];
+            byte[] bytes = new byte[buf.length * 2];
+            while (running) {
+                int n = r.read(buf, 0, buf.length);
+                if (n < 0) {
+                    if (running) p.emit("error", "read " + n);
+                    break;
+                }
+                if (n == 0) continue;
+                synchronized (PCM_LOCK) {
+                    if (pcm != null) {
+                        for (int i = 0; i < n; i++) {
+                            bytes[2 * i] = (byte) buf[i];
+                            bytes[2 * i + 1] = (byte) (buf[i] >> 8);
+                        }
+                        pcm.write(bytes, 0, n * 2);
+                    }
+                }
+                if (rec.acceptWaveForm(buf, n)) {
+                    p.emit("result", rec.getResult());
+                } else {
+                    p.emit("partial", rec.getPartialResult());
+                }
+            }
+        }, "vosk-mic");
+        micThread.start();
+    }
+
+    /** The audio kept since start(record: true), as 16 kHz mono PCM16 LE; stops keeping more. */
+    private static byte[] takeAudio() {
+        synchronized (PCM_LOCK) {
+            byte[] out = pcm == null ? null : pcm.toByteArray();
+            pcm = null;
+            return out;
+        }
     }
 
     private static void release() {
@@ -183,10 +243,23 @@ public class VoskListenerPlugin implements FlutterPlugin, MethodChannel.MethodCa
     }
 
     private static void releaseSpeech() {
-        if (speech != null) {
-            speech.stop();
-            speech.shutdown();
-            speech = null;
+        running = false;
+        if (micThread != null) {
+            try {
+                micThread.join(1500);
+            } catch (InterruptedException ignored) {
+                Thread.currentThread().interrupt();
+            }
+            micThread = null;
+        }
+        if (audio != null) {
+            try {
+                audio.stop();
+            } catch (IllegalStateException ignored) {
+                // Already stopped.
+            }
+            audio.release();
+            audio = null;
         }
         if (recognizer != null) {
             recognizer.close();

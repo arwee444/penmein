@@ -44,7 +44,7 @@ enum _Mode { waiting, dictating, error }
 
 class ListenTaskHandler extends TaskHandler {
   VoiceSettings _s = const VoiceSettings();
-  String? _wakePath, _notePath;
+  String? _wakePath, _notePath, _whisperPath;
   NoteInbox? _inbox;
   _Mode _mode = _Mode.waiting;
   String? _error;
@@ -143,7 +143,7 @@ class ListenTaskHandler extends TaskHandler {
     _wakeSub = null;
     if (_s.vibrate) VoskListener.vibrate().catchError((_) {});
     await _show();
-    final d = _dict = Dictation(_s, onLive: _sendLive);
+    final d = _dict = Dictation(_s, onLive: _sendLive, whisperPath: _whisperPath, onPolishing: _showPolishing);
     final r = await d.run(_notePath!);
     _dict = null;
     if (_destroyed) return;
@@ -159,6 +159,15 @@ class ListenTaskHandler extends TaskHandler {
     FlutterForegroundTask.sendDataToMain({'ended': r.reason.name, 'text': r.text});
     _cooldownUntil = DateTime.now().add(const Duration(milliseconds: 1500));
     await _listenForWake();
+  }
+
+  void _showPolishing() {
+    FlutterForegroundTask.updateService(
+      notificationTitle: '$_title · ✍ Writing it down…',
+      notificationText: 'Making the note accurate. A few seconds.',
+      notificationButtons: waitingButtons,
+    );
+    FlutterForegroundTask.sendDataToMain({'live': '✍ Writing it down…'});
   }
 
   void _sendLive(String text) {
@@ -213,6 +222,7 @@ class ListenTaskHandler extends TaskHandler {
     final n = await SpeechModels.noteModel(_s.modelId);
     _wakePath = w == null ? null : await SpeechModels.pathOf(w);
     _notePath = n == null ? null : await SpeechModels.pathOf(n);
+    _whisperPath = await SpeechModels.whisperPath(_s.whisperId);
   }
 
   @override

@@ -228,7 +228,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 _header('About'),
                 const ListTile(
                   leading: Icon(Icons.info_outline),
-                  title: Text('Pen Me In 1.2.0'),
+                  title: Text('Pen Me In 1.3.0'),
                   subtitle: Text('Say it. It\'s written. Personal test build.'),
                 ),
                 Padding(

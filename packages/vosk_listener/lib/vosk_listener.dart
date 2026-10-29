@@ -41,10 +41,17 @@ class VoskListener {
 
   /// Loads the model at [modelPath] and starts listening. With [grammar],
   /// recognition is limited to those phrases (plus unknown speech).
-  static Future<void> start({required String modelPath, List<String>? grammar}) => _m.invokeMethod('start', {
-    'modelPath': modelPath,
-    'grammar': grammar == null ? null : jsonEncode([...grammar, '[unk]']),
-  });
+  /// With [record], the raw audio is also kept until [takeAudio].
+  static Future<void> start({required String modelPath, List<String>? grammar, bool record = false}) =>
+      _m.invokeMethod('start', {
+        'modelPath': modelPath,
+        'grammar': grammar == null ? null : jsonEncode([...grammar, '[unk]']),
+        'record': record,
+      });
+
+  /// Audio kept since `start(record: true)`: 16 kHz mono PCM16 little-endian.
+  /// Stops keeping audio (recognition continues until [stop]/[start]).
+  static Future<Uint8List?> takeAudio() => _m.invokeMethod<Uint8List>('takeAudio');
 
   static Future<void> stop() => _m.invokeMethod('stop');
 

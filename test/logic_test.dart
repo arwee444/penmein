@@ -24,6 +24,15 @@ void main() {
       expect(stripTrailing('दूध लाना बस', ['बस']), 'दूध लाना');
     });
 
+    test('cleans Whisper text but keeps its punctuation', () {
+      expect(
+        cleanTranscript('[BLANK_AUDIO] Pen me in, buy milk and eggs. Done.', wake: defaultWakePhrases, stop: defaultStopPhrases),
+        'Buy milk and eggs.',
+      );
+      expect(cleanTranscript('Call the dentist at 4 PM.', stop: defaultStopPhrases), 'Call the dentist at 4 PM.');
+      expect(cleanTranscript(' (music) ', stop: defaultStopPhrases), '');
+    });
+
     test('strips trailing stop phrase', () {
       expect(stripTrailing('buy milk end note', defaultStopPhrases), 'buy milk');
       expect(stripTrailing('buy milk done', defaultStopPhrases), 'buy milk');

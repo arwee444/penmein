@@ -25,8 +25,15 @@ class _ModelsScreenState extends State<ModelsScreen> {
     VoiceSettings.load().then((s) => setState(() => _s = s));
   }
 
-  Future<void> _use(SpeechModel model) async {
-    final s = _s!.copyWith(modelId: model.id);
+  Future<void> _use(SpeechModel model, {bool off = false}) async {
+    final s = model.whisper ? _s!.copyWith(whisperId: off ? '' : model.id) : _s!.copyWith(modelId: model.id);
+    setState(() => _s = s);
+    await s.save();
+    listen.pushSettings();
+  }
+
+  Future<void> _setLang(String lang) async {
+    final s = _s!.copyWith(speakLang: lang);
     setState(() => _s = s);
     await s.save();
     listen.pushSettings();
@@ -70,6 +77,17 @@ class _ModelsScreenState extends State<ModelsScreen> {
                   ),
                   const SizedBox(height: 16),
                   for (final model in speechModels) ...[_card(model, s), const SizedBox(height: 10)],
+                  const SizedBox(height: 14),
+                  const Text('ACCURACY BOOST · WHISPER', style: TextStyle(color: Pal.gold, fontSize: 12, letterSpacing: 1.2)),
+                  const SizedBox(height: 6),
+                  const Text(
+                    'Optional. The live model still hears "pen me in" and when you stop; Whisper then rewrites the note '
+                    'from the recording, much more accurately. Notes are always written in English.',
+                    style: TextStyle(color: Pal.fog, height: 1.35),
+                  ),
+                  const SizedBox(height: 12),
+                  for (final model in whisperModels) ...[_card(model, s), const SizedBox(height: 10)],
+                  _languagePicker(s),
                   const SizedBox(height: 8),
                   const Text(
                     'No offline models exist yet for Tamil, Kannada, UK or Australian English. '
@@ -86,7 +104,7 @@ class _ModelsScreenState extends State<ModelsScreen> {
     final st = _m.state(model);
     final ready = st == ModelState.ready;
     final working = st == ModelState.downloading || st == ModelState.unpacking;
-    final inUse = ready && s.modelId == model.id;
+    final inUse = ready && (model.whisper ? s.whisperId == model.id : s.modelId == model.id);
     return Card(
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(14),
@@ -136,11 +154,12 @@ class _ModelsScreenState extends State<ModelsScreen> {
                             children: [
                               Icon(Icons.check_circle, size: 18, color: Pal.gold),
                               SizedBox(width: 6),
-                              Text('Writing your notes', style: TextStyle(color: Pal.gold)),
+                              Text('In use', style: TextStyle(color: Pal.gold)),
                             ],
                           ),
                         )
-                      : FilledButton.tonal(onPressed: () => _use(model), child: const Text('Use for notes')),
+                      : FilledButton.tonal(onPressed: () => _use(model), child: Text(model.whisper ? 'Use' : 'Use for notes')),
+                if (inUse && model.whisper) TextButton(onPressed: () => _use(model, off: true), child: const Text('Turn off')),
                 const Spacer(),
                 if (ready)
                   TextButton(onPressed: _m.busy ? null : () => _delete(model), child: const Text('Remove'))
@@ -157,4 +176,45 @@ class _ModelsScreenState extends State<ModelsScreen> {
       ),
     );
   }
+}
+
+const _languages = {
+  'en': 'English',
+  'hi': 'Hindi → English',
+  'ta': 'Tamil → English',
+  'kn': 'Kannada → English',
+  'auto': 'Mixed / detect → English',
+};
+
+extension on _ModelsScreenState {
+  Widget _languagePicker(VoiceSettings s) => Card(
+    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14), side: const BorderSide(color: Pal.smoke)),
+    child: Padding(
+      padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text('I speak', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 16)),
+          const SizedBox(height: 4),
+          const Text(
+            'Used by Whisper. Hindi, Tamil and Kannada are written as English.',
+            style: TextStyle(color: Pal.fog, fontSize: 13),
+          ),
+          const SizedBox(height: 8),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              for (final e in _languages.entries)
+                ChoiceChip(
+                  label: Text(e.value),
+                  selected: s.speakLang == e.key,
+                  onSelected: (_) => _setLang(e.key),
+                ),
+            ],
+          ),
+        ],
+      ),
+    ),
+  );
 }

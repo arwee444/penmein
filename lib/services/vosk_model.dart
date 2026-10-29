@@ -9,7 +9,7 @@ import 'package:vosk_listener/vosk_listener.dart';
 
 /// An offline Vosk speech model the user can install from alphacephei.com.
 class SpeechModel {
-  const SpeechModel(this.id, this.dir, this.label, this.detail, this.sizeMb, {this.english = true});
+  const SpeechModel(this.id, this.dir, this.label, this.detail, this.sizeMb, {this.english = true, this.whisper = false});
 
   final String id;
 
@@ -22,7 +22,13 @@ class SpeechModel {
   /// English models can also listen for the wake phrase.
   final bool english;
 
-  String get url => 'https://alphacephei.com/vosk/models/$dir.zip';
+  /// A Whisper model (one .bin file) that rewrites finished notes, rather than
+  /// a Vosk model that listens live.
+  final bool whisper;
+
+  String get url => whisper
+      ? 'https://huggingface.co/ggerganov/whisper.cpp/resolve/main/$dir'
+      : 'https://alphacephei.com/vosk/models/$dir.zip';
 }
 
 const speechModels = [
@@ -46,8 +52,31 @@ const speechModels = [
   ),
 ];
 
+/// Whisper models (whisper.cpp, quantised). Multilingual, so Hindi, Tamil and
+/// Kannada speech can be written in English.
+const whisperModels = [
+  SpeechModel(
+    'whisper-base',
+    'ggml-base-q5_1.bin',
+    'Whisper · base',
+    'Much more accurate than the live models. Takes a couple of seconds after you finish.',
+    57,
+    english: false,
+    whisper: true,
+  ),
+  SpeechModel(
+    'whisper-small',
+    'ggml-small-q5_1.bin',
+    'Whisper · small',
+    'The most accurate, best for accents and other languages. Takes a few seconds longer.',
+    181,
+    english: false,
+    whisper: true,
+  ),
+];
+
 SpeechModel? modelById(String id) {
-  for (final m in speechModels) {
+  for (final m in [...speechModels, ...whisperModels]) {
     if (m.id == id) return m;
   }
   return null;
@@ -71,10 +100,12 @@ class SpeechModels extends ChangeNotifier {
 
   static Future<Directory> _root() async => Directory(p.join((await getApplicationSupportDirectory()).path, 'vosk'));
 
-  static Future<String> pathOf(SpeechModel m) async => p.join((await _root()).path, m.dir);
+  static Future<String> pathOf(SpeechModel m) async =>
+      m.whisper ? p.join((await _root()).path, 'whisper', m.dir) : p.join((await _root()).path, m.dir);
 
   static Future<bool> isInstalled(SpeechModel m) async {
     final d = await pathOf(m);
+    if (m.whisper) return File(d).existsSync();
     return File(p.join(d, '.installed')).existsSync() || File(p.join(d, 'am', 'final.mdl')).existsSync();
   }
 
@@ -100,8 +131,15 @@ class SpeechModels extends ChangeNotifier {
     return null;
   }
 
+  /// Path of the chosen Whisper model, or null when off or not installed.
+  static Future<String?> whisperPath(String id) async {
+    final m = modelById(id);
+    if (m == null || !m.whisper || !await isInstalled(m)) return null;
+    return pathOf(m);
+  }
+
   Future<void> check() async {
-    for (final m in speechModels) {
+    for (final m in [...speechModels, ...whisperModels]) {
       final s = state(m);
       if (s == ModelState.downloading || s == ModelState.unpacking) continue;
       _state[m.id] = await isInstalled(m) ? ModelState.ready : ModelState.missing;
@@ -111,8 +149,14 @@ class SpeechModels extends ChangeNotifier {
 
   Future<void> delete(SpeechModel m) async {
     if (busy) return;
-    final d = Directory(await pathOf(m));
-    if (d.existsSync()) await d.delete(recursive: true);
+    final path = await pathOf(m);
+    if (m.whisper) {
+      final f = File(path);
+      if (f.existsSync()) await f.delete();
+    } else {
+      final d = Directory(path);
+      if (d.existsSync()) await d.delete(recursive: true);
+    }
     _set(m, ModelState.missing);
   }
 
@@ -125,7 +169,8 @@ class SpeechModels extends ChangeNotifier {
     try {
       final root = await _root();
       await root.create(recursive: true);
-      final zip = File(p.join(root.path, '${m.dir}.zip'));
+      if (m.whisper) await Directory(p.join(root.path, 'whisper')).create(recursive: true);
+      final zip = File(m.whisper ? '${await pathOf(m)}.part' : p.join(root.path, '${m.dir}.zip'));
       final res = await client.send(http.Request('GET', Uri.parse(m.url))).timeout(const Duration(seconds: 30));
       if (res.statusCode != 200) throw HttpException('HTTP ${res.statusCode}');
       final total = res.contentLength ?? 0;
@@ -147,6 +192,11 @@ class SpeechModels extends ChangeNotifier {
         await sink.close();
       }
       if (total > 0 && got != total) throw const HttpException('Download was cut off');
+      if (m.whisper) {
+        await zip.rename(await pathOf(m));
+        _set(m, ModelState.ready);
+        return;
+      }
       _set(m, ModelState.unpacking);
       final dest = Directory(await pathOf(m));
       if (dest.existsSync()) await dest.delete(recursive: true);

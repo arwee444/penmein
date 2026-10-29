@@ -1,19 +1,31 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
 import 'package:vosk_listener/vosk_listener.dart';
 
 import '../core/note_session.dart';
+import '../core/phrases.dart';
 import 'settings.dart';
+import 'whisper.dart';
 
 /// One dictated note: free (non-grammar) recognition until the note ends.
 /// Used both by the background service and by the in-app mic button.
+///
+/// Vosk listens live (preview, pause and stop/cancel phrases). With a
+/// [whisperPath], the note's audio is also kept and Whisper rewrites the text
+/// once it ends; if Whisper fails, Vosk's text is kept.
 class Dictation {
-  Dictation(this.settings, {this.onLive});
+  Dictation(this.settings, {this.onLive, this.whisperPath, this.onPolishing});
 
   final VoiceSettings settings;
 
   /// Live preview of the text so far.
   final void Function(String text)? onLive;
+
+  final String? whisperPath;
+
+  /// Called when listening has ended and Whisper starts rewriting.
+  final void Function()? onPolishing;
 
   NoteSession? _session;
   final _done = Completer<NoteResult>();
@@ -28,7 +40,7 @@ class Dictation {
     }
     _sub = VoskListener.events.listen(_onEvent);
     try {
-      await VoskListener.start(modelPath: modelPath);
+      await VoskListener.start(modelPath: modelPath, record: whisperPath != null);
       // Start the clock once the mic is live, so model start-up time isn't
       // counted against the "nothing heard" timeout.
       _session = settings.newSession(DateTime.now());
@@ -36,10 +48,26 @@ class Dictation {
     } catch (_) {
       _maybeFinish(const NoteResult('', NoteEnd.error));
     }
-    final r = await _done.future;
+    var r = await _done.future;
     _timer?.cancel();
     await _sub?.cancel();
     if (settings.beep) await _beep(r.hasNote ? 'end' : 'fail');
+    if (whisperPath != null) {
+      final audio = await VoskListener.takeAudio().catchError((_) => null);
+      if (r.hasNote && audio != null) r = await _polish(r, audio);
+    }
+    return r;
+  }
+
+  Future<NoteResult> _polish(NoteResult r, Uint8List audio) async {
+    onPolishing?.call();
+    try {
+      final text = await WhisperNotes.transcribe(whisperPath!, audio, language: settings.speakLang);
+      final clean = cleanTranscript(text ?? '', wake: settings.wakePhrases, stop: settings.stopPhrases);
+      if (clean.isNotEmpty) return NoteResult(clean, r.reason);
+    } catch (e) {
+      debugPrint('Whisper failed, keeping the live text: ${e.runtimeType}');
+    }
     return r;
   }
 

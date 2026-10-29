@@ -17,6 +17,8 @@ class VoiceSettings {
     this.vibrate = true,
     this.beep = true,
     this.modelId = 'en-us',
+    this.whisperId = '',
+    this.speakLang = 'en',
   });
 
   final List<String> wakePhrases;
@@ -29,6 +31,13 @@ class VoiceSettings {
 
   /// Speech model that writes notes (see speechModels).
   final String modelId;
+
+  /// Whisper model that rewrites each note accurately ('' = off).
+  final String whisperId;
+
+  /// Language the user speaks ('en', 'hi', 'ta', 'kn' or 'auto'). Whisper
+  /// always writes English: other languages are translated.
+  final String speakLang;
 
   static const _key = 'pm_settings';
 
@@ -50,6 +59,8 @@ class VoiceSettings {
     bool? vibrate,
     bool? beep,
     String? modelId,
+    String? whisperId,
+    String? speakLang,
   }) => VoiceSettings(
     wakePhrases: wakePhrases ?? this.wakePhrases,
     stopPhrases: stopPhrases ?? this.stopPhrases,
@@ -59,6 +70,8 @@ class VoiceSettings {
     vibrate: vibrate ?? this.vibrate,
     beep: beep ?? this.beep,
     modelId: modelId ?? this.modelId,
+    whisperId: whisperId ?? this.whisperId,
+    speakLang: speakLang ?? this.speakLang,
   );
 
   Map<String, Object?> toJson() => {
@@ -70,6 +83,8 @@ class VoiceSettings {
     'vibrate': vibrate,
     'beep': beep,
     'model': modelId,
+    'whisper': whisperId,
+    'lang': speakLang,
   };
 
   static List<String> _list(Object? v, List<String> fallback) {
@@ -88,6 +103,8 @@ class VoiceSettings {
       vibrate: (m['vibrate'] as bool?) ?? true,
       beep: (m['beep'] as bool?) ?? true,
       modelId: (m['model'] as String?) ?? 'en-us',
+      whisperId: (m['whisper'] as String?) ?? '',
+      speakLang: (m['lang'] as String?) ?? 'en',
     );
   }
 
