@@ -197,13 +197,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   ),
                   trailing: Text(s.maxSeconds < 60 ? '${s.maxSeconds} s' : '${(s.maxSeconds / 60).toStringAsFixed(1)} min'),
                 ),
-                if (android) ...[
                 SwitchListTile(
                   title: const Text('Beep'),
-                  subtitle: const Text('One beep when recording starts, two when the note is saved'),
+                  subtitle: const Text('A beep when recording starts and another when the note is saved'),
                   value: s.beep,
                   onChanged: (v) => _set(s.copyWith(beep: v)),
                 ),
+                if (android) ...[
                 SwitchListTile(
                   title: const Text('Vibrate'),
                   subtitle: const Text('Buzz when a note starts and when it is saved'),

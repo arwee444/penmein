@@ -107,3 +107,19 @@ Mac notes for next time:
 - `flutter` isn't on the shell PATH: it lives at `~/development/flutter/bin`.
 - `pod` lives at `~/.gem/ruby/2.6.0/bin`, and it crashes with `Unicode Normalization not appropriate for
   ASCII-8BIT` unless you set `export LANG=en_US.UTF-8 LC_ALL=en_US.UTF-8` first.
+
+### Phone test feedback, round 1 (2026-10-29)
+
+- **In-app mic:** there was no beep after "done", and notes saved after a short gap.
+  - Fixed: iOS now beeps like Android (start / saved / nothing saved), using iPhone system sounds through the
+    `penmein/beep` channel in `AppDelegate.swift`. The Beep switch now shows in Settings on iPhone too.
+    System sounds follow the ringer switch, so there's no beep when the phone is on silent.
+  - Fixed: the note now ends only by the same rules as Android: the "Pause that ends a note" setting
+    (default 2.5 s), a stop phrase ("done"), the Done button, or the length limit. Before, the plugin's pause
+    timer or any result Apple marked as final saved the note straight away. If Apple's recogniser stops by
+    itself, the app keeps what it heard and starts listening again.
+  - Still the same on both platforms: a pause longer than the setting saves the note. To wait longer before
+    saying "done", raise "Pause that ends a note" (up to 6 s).
+- **Siri:** Siri stopped listening before the user said "stop". That's Siri's own end-of-speech
+  detection when it asks "What should I write down?". Apps can't change how long Siri waits, and Siri plays
+  no app beep. Workaround: say the whole note in one go, or use the in-app mic for longer notes.
