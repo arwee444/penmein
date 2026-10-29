@@ -123,3 +123,14 @@ Mac notes for next time:
 - **Siri:** Siri stopped listening before the user said "stop". That's Siri's own end-of-speech
   detection when it asks "What should I write down?". Apps can't change how long Siri waits, and Siri plays
   no app beep. Workaround: say the whole note in one go, or use the in-app mic for longer notes.
+
+### Phone test feedback, round 2
+
+- **In-app mic still stopped after the first sentence, even with a 1 s pause.** Cause: Apple's recogniser
+  ends its own recognition after a short pause. The app then tried to listen again before the plugin had
+  fully stopped, and that failure ended the note.
+- **Fixed:** when Apple stops (status "notListening"/"done" or an error), the app waits briefly, keeps any
+  words Apple hadn't confirmed, and listens again (retrying for up to ~1.5 s). Results from the old listen are
+  ignored, so text isn't doubled. The note still ends only on the pause setting, "done", Done or the length limit.
+  There's a gap of about a quarter second while it restarts, so a word said at that exact moment can be missed.
+- Not yet confirmed on the phone.
