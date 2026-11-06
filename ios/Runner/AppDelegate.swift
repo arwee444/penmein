@@ -25,8 +25,20 @@ import UIKit
       // "Hey Siri, Pen Me In" asked to start dictating (PenNoteIntent.swift).
       let channel = FlutterMethodChannel(name: "penmein/launch", binaryMessenger: registrar.messenger())
       channel.setMethodCallHandler { call, result in
-        guard call.method == "takeDictateRequest" else { return result(FlutterMethodNotImplemented) }
-        result(DictateRequest.take())
+        switch call.method {
+        case "takeDictateRequest":
+          result(DictateRequest.take())
+        case "setPhrases":
+          // Stop / cancel phrases for lock-screen recording (LockDictation.swift).
+          let args = call.arguments as? [String: Any]
+          LockPhrases.save(
+            stop: args?["stop"] as? [String] ?? [],
+            cancel: args?["cancel"] as? [String] ?? []
+          )
+          result(nil)
+        default:
+          result(FlutterMethodNotImplemented)
+        }
       }
     }
   }

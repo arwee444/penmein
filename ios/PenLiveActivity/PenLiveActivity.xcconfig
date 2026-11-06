@@ -1,0 +1,2 @@
+// Version numbers from pubspec.yaml (FLUTTER_BUILD_NAME / NUMBER), same as the app.
+#include "../Flutter/Generated.xcconfig"

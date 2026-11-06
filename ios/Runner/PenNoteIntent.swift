@@ -1,16 +1,14 @@
 import AppIntents
 import Foundation
 
-/// "Hey Siri, Pen Me In" / Action Button.
-///
-/// Opens the app straight into its own dictation, which ends only on "done"
-/// or the Done button (lib/services/ios_dictation.dart). Siri's own dictation
-/// ends at the first pause and apps can't change that, so Siri doesn't take
-/// the note itself. The app picks the request up through `DictateRequest`
-/// (method channel `penmein/launch` in AppDelegate.swift, lib/ui/home_screen.dart).
+/// Shortcuts action "Dictate in the app": opens Pen Me In straight into its own
+/// dictation (lib/services/ios_dictation.dart). "Hey Siri, Pen Me In" records
+/// without opening the app instead (RecordNoteIntent in LockDictation.swift).
+/// The app picks the request up through `DictateRequest` (method channel
+/// `penmein/launch` in AppDelegate.swift, lib/ui/home_screen.dart).
 @available(iOS 16.0, *)
 struct DictateNoteIntent: AppIntent {
-  static let title: LocalizedStringResource = "Pen me in"
+  static let title: LocalizedStringResource = "Dictate in the app"
   static let description = IntentDescription("Open Pen Me In and start dictating. Say \"done\" to save.")
   static let openAppWhenRun = true
 
@@ -61,11 +59,12 @@ struct PenNoteIntent: AppIntent {
   }
 }
 
-@available(iOS 16.0, *)
+/// "Hey Siri, Pen Me In" and the Action Button: record a note, even locked.
+@available(iOS 18.0, *)
 struct PenNoteShortcuts: AppShortcutsProvider {
   static var appShortcuts: [AppShortcut] {
     AppShortcut(
-      intent: DictateNoteIntent(),
+      intent: RecordNoteIntent(),
       phrases: [
         "\(.applicationName)",
         "Take a note in \(.applicationName)",

@@ -26,6 +26,12 @@
 	<string>$(FLUTTER_BUILD_NUMBER)</string>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>Pen Me In uses the microphone to hear the notes you dictate in the app.</string>
+	<key>NSSpeechRecognitionUsageDescription</key>
+	<string>Pen Me In turns your spoken words into note text.</string>
+	<key>NSSupportsLiveActivities</key>
+	<true/>
 	<key>UIApplicationSceneManifest</key>
 	<dict>
 		<key>UIApplicationSupportsMultipleScenes</key>
@@ -47,12 +53,12 @@
 			</array>
 		</dict>
 	</dict>
-	<key>NSMicrophoneUsageDescription</key>
-	<string>Pen Me In uses the microphone to hear the notes you dictate in the app.</string>
-	<key>NSSpeechRecognitionUsageDescription</key>
-	<string>Pen Me In turns your spoken words into note text.</string>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
+	<key>UIBackgroundModes</key>
+	<array>
+		<string>audio</string>
+	</array>
 	<key>UILaunchStoryboardName</key>
 	<string>LaunchScreen</string>
 	<key>UIMainStoryboardFile</key>

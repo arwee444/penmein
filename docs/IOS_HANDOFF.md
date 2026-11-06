@@ -154,3 +154,17 @@ Mac notes for next time:
 - **Siri:** "Hey Siri, Pen Me In" now opens the app straight into this dictation (`DictateNoteIntent`,
   `penmein/launch` channel), because Siri's own dictation ends at the first pause. From the lock screen iOS
   asks to unlock first. The text-taking intent remains as the Shortcuts action "Add a note".
+
+### Round 5 (2026-11-06, v1.4.0, iPhone only): record on the locked phone
+
+- User request: "Hey Siri, Pen Me In" must record on the lock screen, without unlocking, until the close word.
+  v1.3.1 opened the app, which iOS only allows after unlocking.
+- Now `RecordNoteIntent` (`AudioRecordingIntent`, iOS 18+, `authenticationPolicy = .alwaysAllowed`) records in
+  the background: AVAudioEngine + on-device SFSpeechRecognizer, restarting recognition when Apple ends a
+  stretch. iOS requires a Live Activity while recording: new widget extension target `PenLiveActivity`
+  (bundle id `com.arwee.penmein.LiveActivity`, iOS 18, embedded before "Thin Binary") showing the live text
+  with Done / Cancel buttons (`LiveActivityIntent`s). Ends on the stop phrase ("done"), cancel phrase, the
+  buttons, 30 min, or 20 s with nothing said. Beeps like in-app. Saved notes go to `inbox.jsonl`.
+- Info.plist: `UIBackgroundModes` = audio, `NSSupportsLiveActivities`. ActivityKit is weak-linked (app min iOS 15).
+- Mic + speech permission must have been granted once in the app (in-app dictation asks for them).
+- Built, signed (paid team) and installed. **Not yet tested on the phone.**

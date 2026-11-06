@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_foreground_task/flutter_foreground_task.dart';
 
 import '../core/note_session.dart';
@@ -123,5 +124,18 @@ class VoiceSettings {
     }
   }
 
-  Future<void> save() => FlutterForegroundTask.saveData(key: _key, value: jsonEncode(toJson()));
+  Future<void> save() async {
+    await FlutterForegroundTask.saveData(key: _key, value: jsonEncode(toJson()));
+    await syncToIos();
+  }
+
+  /// iPhone: lock-screen recording ("Hey Siri, Pen Me In", ios/Runner/LockDictation.swift)
+  /// runs without Flutter, so it gets the stop / cancel phrases from here.
+  Future<void> syncToIos() async {
+    if (!_iPhone) return;
+    try {
+      await const MethodChannel('penmein/launch')
+          .invokeMethod<void>('setPhrases', {'stop': stopPhrases, 'cancel': cancelPhrases});
+    } catch (_) {}
+  }
 }

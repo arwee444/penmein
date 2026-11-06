@@ -4,6 +4,7 @@ import 'package:path_provider/path_provider.dart';
 
 import 'data/notes.dart';
 import 'services/listen_service.dart';
+import 'services/settings.dart';
 import 'theme.dart';
 import 'ui/home_screen.dart';
 import 'ui/onboarding_screen.dart';
@@ -23,6 +24,7 @@ Future<void> main() async {
   inbox = NoteInbox(dir);
   await notes.load();
   await notes.importInbox(inbox);
+  await (await VoiceSettings.load()).syncToIos();
   listen = ListenController();
   listen.onNoted = () => notes.importInbox(inbox);
   final onboarded = (await FlutterForegroundTask.getData<bool>(key: onboardedKey)) ?? false;
