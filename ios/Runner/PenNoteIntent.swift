@@ -42,7 +42,7 @@ enum DictateRequest {
 /// (`NoteInbox` in lib/data/notes.dart); the app imports it on launch/resume.
 @available(iOS 16.0, *)
 struct PenNoteIntent: AppIntent {
-  static let title: LocalizedStringResource = "Add a note"
+  static let title: LocalizedStringResource = "Pen me in"
   static let description = IntentDescription("Save text as a note in Pen Me In.")
   static let openAppWhenRun = false
 
@@ -59,12 +59,15 @@ struct PenNoteIntent: AppIntent {
   }
 }
 
-/// "Hey Siri, Pen Me In" and the Action Button: record a note, even locked.
-@available(iOS 18.0, *)
+/// "Hey Siri, Pen Me In" and the Action Button: Siri asks "What should I write
+/// down?" and saves the answer (works on the locked phone; the 29-31 Oct
+/// behaviour the user confirmed). The background recorder (RecordNoteIntent)
+/// stays available as the Shortcuts action "Record a long note".
+@available(iOS 16.0, *)
 struct PenNoteShortcuts: AppShortcutsProvider {
   static var appShortcuts: [AppShortcut] {
     AppShortcut(
-      intent: RecordNoteIntent(),
+      intent: PenNoteIntent(),
       phrases: [
         "\(.applicationName)",
         "Take a note in \(.applicationName)",

@@ -28,16 +28,16 @@ be done the same way on the other, say so and do the closest equivalent.
 
 - Platform-only features are guarded with `ListenController.isSupported` (Android only): background listening
   (foreground service + offline Vosk wake phrase), speech models, beeps, battery. The iOS counterpart is
-  "Hey Siri, Pen Me In" / Action Button = `RecordNoteIntent` (`ios/Runner/LockDictation.swift`, iOS 18+): records
+  "Hey Siri, Pen Me In" / Action Button = `PenNoteIntent` (Siri asks "What should I write down?", works locked;
+  the user-confirmed 31 Oct behaviour). Shortcuts action "Record a long note" = `RecordNoteIntent` (`ios/Runner/LockDictation.swift`, iOS 18+): records
   in the background even on the locked phone, with a Live Activity (widget extension `ios/PenLiveActivity`,
   shared `ios/Runner/PenNoteActivity.swift`), ends only on the stop/cancel phrase or the Done/Cancel buttons,
   and writes the same `inbox.jsonl` format (`{"id","text","t"}`, read by `NoteInbox` in `lib/data/notes.dart`).
   Stop/cancel phrases reach it via `VoiceSettings.syncToIos` (`penmein/launch` channel). Shortcuts actions in
   `ios/Runner/PenNoteIntent.swift`: "Dictate in the app" and "Add a note". A change to the inbox format must be
   made on both sides.
-- User-requested platform difference: on **iPhone only** a pause never ends a note; only the stop phrase
-  ("done"), the Done button, a cancel phrase or a 30-min safety limit do (`VoiceSettings.newSession`). Android
-  keeps the pause rule and its Timing sliders.
+- In-app note rules are the same on both platforms (user, 2026-11-06: "copy Android to iOS"): the pause setting,
+  "done", Done, cancel phrase, length limit (`VoiceSettings.newSession`).
 - New plugin: check it supports both android and ios; add any Info.plist keys it needs.
 - Bump `version:` in `pubspec.yaml` for each release; it sets both platforms' version numbers.
 - Never change `com.arwee.penmein` (Android applicationId / iOS bundle id) or the Android signing.

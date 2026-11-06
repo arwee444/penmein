@@ -14,7 +14,7 @@ import Speech
 /// iPhone. The note goes to the same inbox.jsonl the app imports on open.
 @available(iOS 18.0, *)
 struct RecordNoteIntent: AudioRecordingIntent {
-  static let title: LocalizedStringResource = "Pen me in"
+  static let title: LocalizedStringResource = "Record a long note"
   static let description = IntentDescription("Record a note, even on the lock screen. Say \"done\" to save it.")
   static let openAppWhenRun = false
   static let authenticationPolicy: IntentAuthenticationPolicy = .alwaysAllowed

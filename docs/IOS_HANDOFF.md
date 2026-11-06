@@ -168,3 +168,12 @@ Mac notes for next time:
 - Info.plist: `UIBackgroundModes` = audio, `NSSupportsLiveActivities`. ActivityKit is weak-linked (app min iOS 15).
 - Mic + speech permission must have been granted once in the app (in-app dictation asks for them).
 - Built, signed (paid team) and installed. **Not yet tested on the phone.**
+
+### Round 6 (2026-11-06, v1.4.1, from the PC): back to the 31 Oct behaviour
+
+- User report on v1.4.0: Siri didn't understand "Pen Me In" and asked to unlock the phone. The 31 Oct build worked.
+  User asked for iPhone to work like the Android app.
+- "Hey Siri, Pen Me In" / Action Button run `PenNoteIntent` again (Siri asks "What should I write down?" and saves
+  the answer; works locked). `RecordNoteIntent` stays, renamed to the Shortcuts action "Record a long note".
+- In-app dictation uses the Android rules again: the pause setting ends a note (Timing sliders shown on iPhone).
+- After installing: open the app once, then wait a minute so iOS registers the Siri phrase.

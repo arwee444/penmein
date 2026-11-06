@@ -50,10 +50,8 @@ class VoiceSettings {
     wakePhrases: wakePhrases,
     stopPhrases: stopPhrases,
     cancelPhrases: cancelPhrases,
-    // iPhone: only "done" / Done ends a note, never a pause; the length
-    // limit is just a safety net there. Android keeps the pause rule.
-    pause: _iPhone ? null : Duration(milliseconds: pauseMs),
-    maxLength: _iPhone ? const Duration(minutes: 30) : Duration(seconds: maxSeconds),
+    pause: Duration(milliseconds: pauseMs),
+    maxLength: Duration(seconds: maxSeconds),
   );
 
   VoiceSettings copyWith({
