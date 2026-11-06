@@ -159,7 +159,10 @@ class _DictateSheetState extends State<_DictateSheet> {
               ],
             ),
             const SizedBox(height: 6),
-            const Text('Pause or say "done" to finish.', style: TextStyle(color: Pal.fog)),
+            Text(
+              ListenController.isSupported ? 'Pause or say "done" to finish.' : 'Say "done" or tap Done to finish.',
+              style: const TextStyle(color: Pal.fog),
+            ),
             const SizedBox(height: 16),
             ConstrainedBox(
               constraints: const BoxConstraints(minHeight: 80),

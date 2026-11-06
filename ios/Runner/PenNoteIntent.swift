@@ -1,16 +1,51 @@
 import AppIntents
 import Foundation
 
-/// "Hey Siri, Pen Me In" / Action Button / Shortcuts.
+/// "Hey Siri, Pen Me In" / Action Button.
 ///
-/// Siri asks "What should I write down?", takes the dictation and the intent
-/// appends it to the same inbox Android's listening service uses (`NoteInbox`
-/// in lib/data/notes.dart). The app imports the inbox on launch/resume.
-/// Runs without opening the app. Mirrors Save This Spot's SaveSpotIntent.
+/// Opens the app straight into its own dictation, which ends only on "done"
+/// or the Done button (lib/services/ios_dictation.dart). Siri's own dictation
+/// ends at the first pause and apps can't change that, so Siri doesn't take
+/// the note itself. The app picks the request up through `DictateRequest`
+/// (method channel `penmein/launch` in AppDelegate.swift, lib/ui/home_screen.dart).
+@available(iOS 16.0, *)
+struct DictateNoteIntent: AppIntent {
+  static let title: LocalizedStringResource = "Pen me in"
+  static let description = IntentDescription("Open Pen Me In and start dictating. Say \"done\" to save.")
+  static let openAppWhenRun = true
+
+  @MainActor
+  func perform() async throws -> some IntentResult {
+    DictateRequest.mark()
+    return .result()
+  }
+}
+
+/// "Start dictating", handed from the intent to the Flutter side.
+enum DictateRequest {
+  private static let key = "pm_dictate_request"
+
+  static func mark() {
+    UserDefaults.standard.set(Date().timeIntervalSince1970, forKey: key)
+  }
+
+  /// True once per request, if it is recent (opening can take a moment, e.g.
+  /// unlocking with Face ID first).
+  static func take() -> Bool {
+    let at = UserDefaults.standard.double(forKey: key)
+    UserDefaults.standard.removeObject(forKey: key)
+    return at > 0 && Date().timeIntervalSince1970 - at < 120
+  }
+}
+
+/// Shortcuts action "Add a note": saves the given text without opening the
+/// app, e.g. in a user-built Shortcut Dictate Text (Stop Listening: On Tap) →
+/// Add a note. Appends to the same inbox Android's listening service uses
+/// (`NoteInbox` in lib/data/notes.dart); the app imports it on launch/resume.
 @available(iOS 16.0, *)
 struct PenNoteIntent: AppIntent {
-  static let title: LocalizedStringResource = "Pen me in"
-  static let description = IntentDescription("Dictate a note into Pen Me In.")
+  static let title: LocalizedStringResource = "Add a note"
+  static let description = IntentDescription("Save text as a note in Pen Me In.")
   static let openAppWhenRun = false
 
   @Parameter(title: "Note", requestValueDialog: IntentDialog("What should I write down?"))
@@ -30,7 +65,7 @@ struct PenNoteIntent: AppIntent {
 struct PenNoteShortcuts: AppShortcutsProvider {
   static var appShortcuts: [AppShortcut] {
     AppShortcut(
-      intent: PenNoteIntent(),
+      intent: DictateNoteIntent(),
       phrases: [
         "\(.applicationName)",
         "Take a note in \(.applicationName)",

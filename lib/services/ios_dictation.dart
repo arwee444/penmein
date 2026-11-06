@@ -9,8 +9,9 @@ import '../core/phrases.dart';
 import 'settings.dart';
 
 /// In-app dictation on iPhone with Apple's speech recogniser (Vosk is
-/// Android-only). Same note rules as [Dictation]: pause, stop/cancel phrases
-/// and the length limit, via [NoteSession], and the same start/end beeps.
+/// Android-only). Note rules via [NoteSession], as on Android, except that a
+/// pause never ends the note: only stop/cancel phrases, Done or the length
+/// limit do (see VoiceSettings.newSession). Same start/end beeps.
 class IosDictation {
   IosDictation(this.settings, {this.onLive});
 
@@ -63,8 +64,7 @@ class IosDictation {
 
   static Future<void> _beep(String kind) => _beeps.invokeMethod<void>('beep', kind).catchError((_) {});
 
-  // No pauseFor: the pause that ends a note is timed by NoteSession, as on
-  // Android, not by the plugin or Apple. The plugin may refuse a new listen
+  // No pauseFor: Apple's pauses must not end the note; NoteSession decides. The plugin may refuse a new listen
   // until the last one has fully stopped, so retry briefly.
   Future<void> _listen() async {
     final gen = _gen;
@@ -90,7 +90,7 @@ class IosDictation {
   }
 
   /// Apple stopped listening but the note isn't over: listen again, so only
-  /// the pause rule, "done", the Done button or the length limit end it.
+  /// "done", the Done button, a cancel phrase or the length limit end it.
   Future<void> _restart() async {
     if (_restarting || _done.isCompleted || _session == null) return;
     _restarting = true;

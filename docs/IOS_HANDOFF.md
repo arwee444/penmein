@@ -143,3 +143,14 @@ Mac notes for next time:
 - **Lock screen (Siri): not working well.** Siri ends the note at the first short pause, and apps can't change that.
   Next we try a user-built Shortcut: **Dictate Text** (Stop Listening: On Tap) → **Pen Me In › Pen me in**
   (Note = Dictated Text), started from the Action Button or "Hey Siri, Long Note". Results pending.
+
+### Phone test feedback, round 4 (2026-11-06, v1.3.1, iPhone only)
+
+- Reinstalled with the paid Developer Program team (profile valid to Nov 2027); the 29 Oct free-team install
+  had expired, which is why Siri said "Pen Me In is not available".
+- **User request: on iPhone a note must end only on the close command, never on its own.** Done:
+  `NoteSession.pause` is null on iPhone, so only "done" / Done / cancel / a 30-min safety limit end a note.
+  The Timing sliders are hidden on iPhone. Android is unchanged (user asked for iOS only).
+- **Siri:** "Hey Siri, Pen Me In" now opens the app straight into this dictation (`DictateNoteIntent`,
+  `penmein/launch` channel), because Siri's own dictation ends at the first pause. From the lock screen iOS
+  asks to unlock first. The text-taking intent remains as the Shortcuts action "Add a note".

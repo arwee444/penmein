@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../data/notes.dart';
 import '../main.dart';
@@ -17,12 +18,42 @@ class HomeScreen extends StatefulWidget {
   State<HomeScreen> createState() => _HomeScreenState();
 }
 
-class _HomeScreenState extends State<HomeScreen> {
+class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   final _search = TextEditingController();
   bool _busy = false;
 
+  /// iPhone: "Hey Siri, Pen Me In" opens the app and asks for dictation
+  /// (ios/Runner/PenNoteIntent.swift).
+  static const _launch = MethodChannel('penmein/launch');
+  bool _dictating = false;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    WidgetsBinding.instance.addPostFrameCallback((_) => _dictateIfSiriAsked());
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) _dictateIfSiriAsked();
+  }
+
+  Future<void> _dictateIfSiriAsked() async {
+    if (ListenController.isSupported || _dictating || !mounted) return;
+    final asked = await _launch.invokeMethod<bool>('takeDictateRequest').catchError((_) => false);
+    if (asked != true || !mounted) return;
+    _dictating = true;
+    try {
+      await showDictateSheet(context);
+    } finally {
+      _dictating = false;
+    }
+  }
+
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _search.dispose();
     super.dispose();
   }
@@ -84,10 +115,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 isDense: true,
                 suffixIcon: _search.text.isEmpty
                     ? null
-                    : IconButton(
-                        icon: const Icon(Icons.close),
-                        onPressed: () => setState(_search.clear),
-                      ),
+                    : IconButton(icon: const Icon(Icons.close), onPressed: () => setState(_search.clear)),
               ),
             ),
           ),
@@ -146,64 +174,70 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _listenCard() => !ListenController.isSupported ? const _SiriCard() : ListenableBuilder(
-    listenable: listen,
-    builder: (context, _) {
-      final on = listen.isRunning;
-      return Card(
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(18),
-          side: BorderSide(color: on ? Pal.coral : Pal.smoke, width: on ? 1.5 : 1),
-        ),
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(16, 14, 8, 14),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  Icon(on ? Icons.graphic_eq : Icons.mic_off, color: on ? Pal.coral : Pal.fog),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: Text(
-                      on ? 'Listening' : 'Listening is off',
-                      style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600, color: on ? Pal.coral : Pal.paper),
+  Widget _listenCard() => !ListenController.isSupported
+      ? const _SiriCard()
+      : ListenableBuilder(
+          listenable: listen,
+          builder: (context, _) {
+            final on = listen.isRunning;
+            return Card(
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(18),
+                side: BorderSide(color: on ? Pal.coral : Pal.smoke, width: on ? 1.5 : 1),
+              ),
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(16, 14, 8, 14),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Icon(on ? Icons.graphic_eq : Icons.mic_off, color: on ? Pal.coral : Pal.fog),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Text(
+                            on ? 'Listening' : 'Listening is off',
+                            style: TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.w600,
+                              color: on ? Pal.coral : Pal.paper,
+                            ),
+                          ),
+                        ),
+                        if (_busy)
+                          const Padding(
+                            padding: EdgeInsets.all(12),
+                            child: SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2)),
+                          )
+                        else
+                          Transform.scale(
+                            scale: 1.25,
+                            child: Switch(
+                              value: on,
+                              activeThumbColor: Pal.background,
+                              activeTrackColor: Pal.coral,
+                              onChanged: _toggle,
+                            ),
+                          ),
+                      ],
                     ),
-                  ),
-                  if (_busy)
-                    const Padding(
-                      padding: EdgeInsets.all(12),
-                      child: SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2)),
-                    )
-                  else
-                    Transform.scale(
-                      scale: 1.25,
-                      child: Switch(
-                        value: on,
-                        activeThumbColor: Pal.background,
-                        activeTrackColor: Pal.coral,
-                        onChanged: _toggle,
+                    const SizedBox(height: 6),
+                    Padding(
+                      padding: const EdgeInsets.only(right: 8),
+                      child: Text(
+                        on
+                            ? 'Say "pen me in", wait for the buzz, then speak. Works with the screen locked. '
+                                  'Uses some battery while on.'
+                            : 'Turn on to take notes hands-free, even with the phone locked.',
+                        style: const TextStyle(color: Pal.fog, height: 1.3),
                       ),
                     ),
-                ],
-              ),
-              const SizedBox(height: 6),
-              Padding(
-                padding: const EdgeInsets.only(right: 8),
-                child: Text(
-                  on
-                      ? 'Say "pen me in", wait for the buzz, then speak. Works with the screen locked. '
-                            'Uses some battery while on.'
-                      : 'Turn on to take notes hands-free, even with the phone locked.',
-                  style: const TextStyle(color: Pal.fog, height: 1.3),
+                  ],
                 ),
               ),
-            ],
-          ),
-        ),
-      );
-    },
-  );
+            );
+          },
+        );
 
   Widget _tile(Note n) {
     final voice = n.source == NoteSource.voice;
@@ -265,7 +299,10 @@ class _SiriCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Card(
-    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18), side: const BorderSide(color: Pal.smoke)),
+    shape: RoundedRectangleBorder(
+      borderRadius: BorderRadius.circular(18),
+      side: const BorderSide(color: Pal.smoke),
+    ),
     child: const Padding(
       padding: EdgeInsets.fromLTRB(16, 14, 16, 14),
       child: Column(

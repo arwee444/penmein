@@ -26,7 +26,11 @@ void main() {
 
     test('cleans Whisper text but keeps its punctuation', () {
       expect(
-        cleanTranscript('[BLANK_AUDIO] Pen me in, buy milk and eggs. Done.', wake: defaultWakePhrases, stop: defaultStopPhrases),
+        cleanTranscript(
+          '[BLANK_AUDIO] Pen me in, buy milk and eggs. Done.',
+          wake: defaultWakePhrases,
+          stop: defaultStopPhrases,
+        ),
         'Buy milk and eggs.',
       );
       expect(cleanTranscript('Call the dentist at 4 PM.', stop: defaultStopPhrases), 'Call the dentist at 4 PM.');
@@ -58,6 +62,15 @@ void main() {
       final r = s.tick(at(4100))!;
       expect(r.reason, NoteEnd.pause);
       expect(r.text, 'Buy milk');
+    });
+
+    test('without a pause rule (iPhone) only "done" ends the note', () {
+      final s = NoteSession(start: t0, pause: null);
+      s.onFinal('buy milk', at(1000));
+      expect(s.tick(at(60000)), isNull);
+      final r = s.onFinal('and eggs done', at(61000))!;
+      expect(r.reason, NoteEnd.stopPhrase);
+      expect(r.text, 'Buy milk and eggs');
     });
 
     test('keeps listening while partial text keeps changing', () {

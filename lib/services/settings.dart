@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter_foreground_task/flutter_foreground_task.dart';
 
 import '../core/note_session.dart';
@@ -41,13 +42,17 @@ class VoiceSettings {
 
   static const _key = 'pm_settings';
 
+  static bool get _iPhone => !kIsWeb && defaultTargetPlatform == TargetPlatform.iOS;
+
   NoteSession newSession(DateTime start) => NoteSession(
     start: start,
     wakePhrases: wakePhrases,
     stopPhrases: stopPhrases,
     cancelPhrases: cancelPhrases,
-    pause: Duration(milliseconds: pauseMs),
-    maxLength: Duration(seconds: maxSeconds),
+    // iPhone: only "done" / Done ends a note, never a pause; the length
+    // limit is just a safety net there. Android keeps the pause rule.
+    pause: _iPhone ? null : Duration(milliseconds: pauseMs),
+    maxLength: _iPhone ? const Duration(minutes: 30) : Duration(seconds: maxSeconds),
   );
 
   VoiceSettings copyWith({

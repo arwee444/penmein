@@ -30,8 +30,9 @@ class NoteSession {
   final List<String> stopPhrases;
   final List<String> cancelPhrases;
 
-  /// Silence after speech that ends the note.
-  final Duration pause;
+  /// Silence after speech that ends the note. Null: a pause never ends it,
+  /// only a stop phrase, Done, cancel or [maxLength] (iPhone).
+  final Duration? pause;
   final Duration maxLength;
 
   /// How long to wait for the first word before giving up.
@@ -79,7 +80,8 @@ class NoteSession {
     if (now.difference(_start) >= maxLength) return _finish(NoteEnd.maxLength);
     final quiet = now.difference(_lastHeard);
     if (!_hasSpeech && quiet >= noSpeechTimeout) return _finish(NoteEnd.nothingHeard, '');
-    if (_hasSpeech && quiet >= pause) return _finish(NoteEnd.pause);
+    final p = pause;
+    if (p != null && _hasSpeech && quiet >= p) return _finish(NoteEnd.pause);
     return null;
   }
 
@@ -98,7 +100,10 @@ class NoteSession {
 
   NoteResult _finish(NoteEnd reason, [String? body]) {
     final t = body == null ? text : tidyNote(stripWake(body, wakePhrases));
-    final r = NoteResult(t, t.isEmpty && reason != NoteEnd.cancelled && reason != NoteEnd.error ? NoteEnd.nothingHeard : reason);
+    final r = NoteResult(
+      t,
+      t.isEmpty && reason != NoteEnd.cancelled && reason != NoteEnd.error ? NoteEnd.nothingHeard : reason,
+    );
     return _result = r;
   }
 }

@@ -111,7 +111,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
     const ListTile(
       leading: Icon(Icons.record_voice_over, color: Pal.gold),
       title: Text('"Hey Siri, Pen Me In"'),
-      subtitle: Text('Siri asks what to write down and saves it here, even from the lock screen.'),
+      subtitle: Text(
+        'Opens Pen Me In and starts listening. Talk as long as you like, then say "done". '
+        'From the lock screen, unlock when asked.',
+      ),
     ),
     const ListTile(
       leading: Icon(Icons.touch_app_outlined),
@@ -138,25 +141,27 @@ class _SettingsScreenState extends State<SettingsScreen> {
               children: [
                 if (!android) ..._siri(),
                 if (android) _header('Speech'),
-                if (android) ListTile(
-                  leading: const Icon(Icons.record_voice_over),
-                  title: const Text('Speech models'),
-                  subtitle: Text('Writing notes with: ${modelById(s.modelId)?.label ?? 'English · standard'}'),
-                  trailing: const Icon(Icons.chevron_right),
-                  onTap: () async {
-                    await Navigator.push(context, MaterialPageRoute(builder: (_) => const ModelsScreen()));
-                    final fresh = await VoiceSettings.load();
-                    if (mounted) setState(() => _s = fresh);
-                  },
-                ),
+                if (android)
+                  ListTile(
+                    leading: const Icon(Icons.record_voice_over),
+                    title: const Text('Speech models'),
+                    subtitle: Text('Writing notes with: ${modelById(s.modelId)?.label ?? 'English · standard'}'),
+                    trailing: const Icon(Icons.chevron_right),
+                    onTap: () async {
+                      await Navigator.push(context, MaterialPageRoute(builder: (_) => const ModelsScreen()));
+                      final fresh = await VoiceSettings.load();
+                      if (mounted) setState(() => _s = fresh);
+                    },
+                  ),
                 _header('Phrases'),
-                if (android) _phrases(
-                  title: 'Wake phrases',
-                  help: 'Say one of these to start a note. 2–4 uncommon words work best.',
-                  list: s.wakePhrases,
-                  isWake: true,
-                  apply: (l) => _set(s.copyWith(wakePhrases: l)),
-                ),
+                if (android)
+                  _phrases(
+                    title: 'Wake phrases',
+                    help: 'Say one of these to start a note. 2–4 uncommon words work best.',
+                    list: s.wakePhrases,
+                    isWake: true,
+                    apply: (l) => _set(s.copyWith(wakePhrases: l)),
+                  ),
                 _phrases(
                   title: 'Stop phrases',
                   help: 'Say one at the end of a note to save it straight away.',
@@ -172,31 +177,36 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   apply: (l) => _set(s.copyWith(cancelPhrases: l)),
                 ),
                 _header('Timing'),
-                ListTile(
-                  title: const Text('Pause that ends a note'),
-                  subtitle: Slider(
-                    value: s.pauseMs / 1000,
-                    min: 1,
-                    max: 6,
-                    divisions: 10,
-                    label: '${(s.pauseMs / 1000).toStringAsFixed(1)} s',
-                    onChanged: (v) => setState(() => _s = s.copyWith(pauseMs: (v * 1000).round())),
-                    onChangeEnd: (v) => _set(s.copyWith(pauseMs: (v * 1000).round())),
+                // iPhone: a note ends only on "done" / Done, so no pause or length sliders.
+                if (android) ...[
+                  ListTile(
+                    title: const Text('Pause that ends a note'),
+                    subtitle: Slider(
+                      value: s.pauseMs / 1000,
+                      min: 1,
+                      max: 6,
+                      divisions: 10,
+                      label: '${(s.pauseMs / 1000).toStringAsFixed(1)} s',
+                      onChanged: (v) => setState(() => _s = s.copyWith(pauseMs: (v * 1000).round())),
+                      onChangeEnd: (v) => _set(s.copyWith(pauseMs: (v * 1000).round())),
+                    ),
+                    trailing: Text('${(s.pauseMs / 1000).toStringAsFixed(1)} s'),
                   ),
-                  trailing: Text('${(s.pauseMs / 1000).toStringAsFixed(1)} s'),
-                ),
-                ListTile(
-                  title: const Text('Longest note'),
-                  subtitle: Slider(
-                    value: s.maxSeconds.toDouble(),
-                    min: 30,
-                    max: 300,
-                    divisions: 9,
-                    onChanged: (v) => setState(() => _s = s.copyWith(maxSeconds: v.round())),
-                    onChangeEnd: (v) => _set(s.copyWith(maxSeconds: v.round())),
+                  ListTile(
+                    title: const Text('Longest note'),
+                    subtitle: Slider(
+                      value: s.maxSeconds.toDouble(),
+                      min: 30,
+                      max: 300,
+                      divisions: 9,
+                      onChanged: (v) => setState(() => _s = s.copyWith(maxSeconds: v.round())),
+                      onChangeEnd: (v) => _set(s.copyWith(maxSeconds: v.round())),
+                    ),
+                    trailing: Text(
+                      s.maxSeconds < 60 ? '${s.maxSeconds} s' : '${(s.maxSeconds / 60).toStringAsFixed(1)} min',
+                    ),
                   ),
-                  trailing: Text(s.maxSeconds < 60 ? '${s.maxSeconds} s' : '${(s.maxSeconds / 60).toStringAsFixed(1)} min'),
-                ),
+                ],
                 SwitchListTile(
                   title: const Text('Beep'),
                   subtitle: const Text('A beep when recording starts and another when the note is saved'),
@@ -204,26 +214,26 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   onChanged: (v) => _set(s.copyWith(beep: v)),
                 ),
                 if (android) ...[
-                SwitchListTile(
-                  title: const Text('Vibrate'),
-                  subtitle: const Text('Buzz when a note starts and when it is saved'),
-                  value: s.vibrate,
-                  onChanged: (v) => _set(s.copyWith(vibrate: v)),
-                ),
-                _header('Battery'),
-                const Padding(
-                  padding: EdgeInsets.fromLTRB(16, 4, 16, 8),
-                  child: Text(
-                    'Listening keeps the microphone and speech recogniser running, so it uses some battery. '
-                    'Turn it off when you don\'t need it.\n\n$samsungTip',
-                    style: TextStyle(color: Pal.fog, height: 1.35),
+                  SwitchListTile(
+                    title: const Text('Vibrate'),
+                    subtitle: const Text('Buzz when a note starts and when it is saved'),
+                    value: s.vibrate,
+                    onChanged: (v) => _set(s.copyWith(vibrate: v)),
                   ),
-                ),
-                ListTile(
-                  leading: const Icon(Icons.battery_saver),
-                  title: const Text('Allow running in the background'),
-                  onTap: askBatteryExemption,
-                ),
+                  _header('Battery'),
+                  const Padding(
+                    padding: EdgeInsets.fromLTRB(16, 4, 16, 8),
+                    child: Text(
+                      'Listening keeps the microphone and speech recogniser running, so it uses some battery. '
+                      'Turn it off when you don\'t need it.\n\n$samsungTip',
+                      style: TextStyle(color: Pal.fog, height: 1.35),
+                    ),
+                  ),
+                  ListTile(
+                    leading: const Icon(Icons.battery_saver),
+                    title: const Text('Allow running in the background'),
+                    onTap: askBatteryExemption,
+                  ),
                 ],
                 _header('About'),
                 const ListTile(
@@ -244,7 +254,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       children: [
                         ArweeWordmark(height: 34, opacity: 1),
                         SizedBox(height: 8),
-                        Text('Pen Me In is made by arwee', style: TextStyle(color: Pal.fog, fontSize: 13, letterSpacing: 0.3)),
+                        Text(
+                          'Pen Me In is made by arwee',
+                          style: TextStyle(color: Pal.fog, fontSize: 13, letterSpacing: 0.3),
+                        ),
                       ],
                     ),
                   ),

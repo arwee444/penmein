@@ -27,10 +27,14 @@ be done the same way on the other, say so and do the closest equivalent.
   | Native launch screen | `res/drawable*/launch_background.xml` | `ios/Runner/Base.lproj/LaunchScreen.storyboard` |
 
 - Platform-only features are guarded with `ListenController.isSupported` (Android only): background listening
-  (foreground service + offline Vosk wake phrase), speech models, beeps, battery. The iOS counterpart is the
-  Siri App Intent `ios/Runner/PenNoteIntent.swift` writing the same `inbox.jsonl` format
-  (`{"id","text","t"}`, read by `NoteInbox` in `lib/data/notes.dart`); in-app dictation on iOS is
-  `lib/services/ios_dictation.dart`. A change to the inbox format must be made on both sides.
+  (foreground service + offline Vosk wake phrase), speech models, beeps, battery. The iOS counterpart is
+  `ios/Runner/PenNoteIntent.swift`: "Hey Siri, Pen Me In" (`DictateNoteIntent`) opens the app straight into
+  in-app dictation (`lib/services/ios_dictation.dart`), and the Shortcuts action "Add a note" (`PenNoteIntent`)
+  writes the same `inbox.jsonl` format (`{"id","text","t"}`, read by `NoteInbox` in `lib/data/notes.dart`).
+  A change to the inbox format must be made on both sides.
+- User-requested platform difference: on **iPhone only** a pause never ends a note; only the stop phrase
+  ("done"), the Done button, a cancel phrase or a 30-min safety limit do (`VoiceSettings.newSession`). Android
+  keeps the pause rule and its Timing sliders.
 - New plugin: check it supports both android and ios; add any Info.plist keys it needs.
 - Bump `version:` in `pubspec.yaml` for each release; it sets both platforms' version numbers.
 - Never change `com.arwee.penmein` (Android applicationId / iOS bundle id) or the Android signing.

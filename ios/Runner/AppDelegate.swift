@@ -21,6 +21,14 @@ import UIKit
         result(nil)
       }
     }
+    if let registrar = engineBridge.pluginRegistry.registrar(forPlugin: "PenLaunch") {
+      // "Hey Siri, Pen Me In" asked to start dictating (PenNoteIntent.swift).
+      let channel = FlutterMethodChannel(name: "penmein/launch", binaryMessenger: registrar.messenger())
+      channel.setMethodCallHandler { call, result in
+        guard call.method == "takeDictateRequest" else { return result(FlutterMethodNotImplemented) }
+        result(DictateRequest.take())
+      }
+    }
   }
 }
 
